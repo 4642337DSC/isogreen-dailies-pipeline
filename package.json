@@ -1,0 +1,19 @@
+{
+  "name": "isogreen-dailies-pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Daily YouTube/Facebook/Instagram/TikTok view-count sync into Notion, plus static client dashboard build for upfilm.ro/clients/isogreen.",
+  "scripts": {
+    "sync": "node src/sync.js",
+    "backfill:thumbnails": "node scripts/backfill-thumbnails.js",
+    "backfill:monthly-views": "node scripts/backfill-monthly-views.js",
+    "backfill:tiktok-monthly": "node scripts/backfill-tiktok-monthly.js"
+  },
+  "dependencies": {
+    "nodemailer": "^9.0.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

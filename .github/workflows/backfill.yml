@@ -1,0 +1,51 @@
+name: Manual backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: Which backfill to run
+        required: true
+        type: choice
+        options:
+          - thumbnails
+          - monthly-views
+          - tiktok-monthly
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run backfill
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          CHANNEL_HANDLE: ${{ secrets.CHANNEL_HANDLE }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+          ZERNIO_TIKTOK_ACCOUNT_ID: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID }}
+          CHANNEL_STATS_DATABASE_ID: ${{ secrets.CHANNEL_STATS_DATABASE_ID }}
+          MONTHLY_VIEWS_DATABASE_ID: ${{ secrets.MONTHLY_VIEWS_DATABASE_ID }}
+          TIKTOK_SNAPSHOT_DATABASE_ID: ${{ secrets.TIKTOK_SNAPSHOT_DATABASE_ID }}
+        run: npm run backfill:${{ github.event.inputs.script }}
+
+      - name: Deploy thumbnails to SiteBunker via FTP
+        if: ${{ github.event.inputs.script == 'thumbnails' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: dist/clients/isogreen/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}

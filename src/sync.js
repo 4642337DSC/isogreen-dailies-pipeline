@@ -1,0 +1,54 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { getConfig, requireConfig } from './config.js';
+import { fetchNotionRows, writeUpdates } from './notion.js';
+import { syncYouTube } from './youtube.js';
+import { syncFacebook } from './facebook.js';
+import { syncInstagram } from './instagram.js';
+import { syncTikTok } from './tiktok.js';
+import { syncAudience } from './audience.js';
+import { syncMonthlyViews } from './monthlyViews.js';
+import { syncThumbnails } from './thumbnails.js';
+import { buildDashboard } from './dashboard.js';
+import { sendSummaryEmail } from './email.js';
+
+var __dirname = path.dirname(fileURLToPath(import.meta.url));
+var DIST_DIR = path.join(__dirname, '..', 'dist', 'clients', 'isogreen');
+
+export async function syncAllViews() {
+  var cfg = getConfig();
+  requireConfig(cfg);
+  var fbEnabled = !!(cfg.FB_PAGE_ID && cfg.FB_PAGE_ACCESS_TOKEN);
+  var tiktokEnabled = !!(cfg.ZERNIO_API_KEY && cfg.ZERNIO_TIKTOK_ACCOUNT_ID);
+
+  var rows = await fetchNotionRows(cfg);
+
+  var yt = await syncYouTube(cfg, rows);
+  var fb = fbEnabled ? await syncFacebook(cfg, rows) : null;
+  var ig = fbEnabled ? await syncInstagram(cfg, rows) : null;
+  var tt = tiktokEnabled ? await syncTikTok(cfg, rows) : null;
+
+  await writeUpdates(cfg, rows, yt, fb, ig, tt);
+
+  try { await syncAudience(cfg); } catch (e) { console.log('Audience sync failed: ' + e); }
+
+  var thumbMap = {};
+  try { thumbMap = await syncThumbnails(rows, path.join(DIST_DIR, 'thumbs')); } catch (e) { console.log('Thumbnail sync failed: ' + e); }
+
+  try {
+    await syncMonthlyViews(cfg, { fbEnabled: fbEnabled, tiktokEnabled: tiktokEnabled, tt: tt });
+  } catch (e) { console.log('Monthly views sync failed: ' + e); }
+
+  try {
+    await buildDashboard(cfg, thumbMap, DIST_DIR);
+  } catch (e) { console.log('Dashboard build failed: ' + e); }
+
+  await sendSummaryEmail(cfg, { yt: yt, fb: fb, ig: ig, tt: tt });
+}
+
+// This file is only ever invoked directly (npm run sync / GitHub Actions),
+// never imported by another module, so it's safe to just run on load.
+syncAllViews().catch(function (e) {
+  console.error(e);
+  process.exitCode = 1;
+});
