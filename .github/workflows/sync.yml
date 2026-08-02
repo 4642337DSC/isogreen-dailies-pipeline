@@ -36,11 +36,13 @@ jobs:
           TIKTOK_SNAPSHOT_DATABASE_ID: ${{ secrets.TIKTOK_SNAPSHOT_DATABASE_ID }}
         run: npm run sync
 
-      - name: Deploy dashboard to SiteBunker via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy dashboard to SiteBunker via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.6
         with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: dist/clients/isogreen/
-          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+          server: '45.86.220.131'
+          username: 'kpgyaqan'
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: '22'
+          local_path: './dist/clients/isogreen/*'
+          remote_path: '/home/kpgyaqan/upfilm.ro/clients/isogreen'
+          sftp_only: true
