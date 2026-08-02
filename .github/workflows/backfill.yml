@@ -39,14 +39,16 @@ jobs:
           TIKTOK_SNAPSHOT_DATABASE_ID: ${{ secrets.TIKTOK_SNAPSHOT_DATABASE_ID }}
         run: npm run backfill:${{ github.event.inputs.script }}
 
-      - name: Deploy thumbnails to SiteBunker via SFTP
+      - name: Publish built dashboard to public output repo
         if: ${{ github.event.inputs.script == 'thumbnails' }}
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.6
-        with:
-          server: '45.86.220.131'
-          username: 'kpgyaqan'
-          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: '22'
-          local_path: './dist/clients/isogreen/*'
-          remote_path: '/home/kpgyaqan/upfilm.ro/clients/isogreen'
-          sftp_only: true
+        working-directory: dist/clients/isogreen
+        run: |
+          git init -q -b main
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add -A
+          git commit -q -m "Deploy dashboard $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git remote add origin "https://x-access-token:${DASHBOARD_REPO_PAT}@github.com/4642337DSC/isogreen-dailies-dashboard.git"
+          git push -q origin main --force
+        env:
+          DASHBOARD_REPO_PAT: ${{ secrets.DASHBOARD_REPO_PAT }}
