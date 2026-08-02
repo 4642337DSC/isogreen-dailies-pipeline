@@ -35,9 +35,6 @@ jobs:
           CHANNEL_STATS_DATABASE_ID: ${{ secrets.CHANNEL_STATS_DATABASE_ID }}
           MONTHLY_VIEWS_DATABASE_ID: ${{ secrets.MONTHLY_VIEWS_DATABASE_ID }}
           TIKTOK_SNAPSHOT_DATABASE_ID: ${{ secrets.TIKTOK_SNAPSHOT_DATABASE_ID }}
-          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
-          GMAIL_USER: ${{ secrets.GMAIL_USER }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: npm run sync
 
       - name: Deploy dashboard to SiteBunker via FTP

@@ -10,9 +10,7 @@
     "backfill:monthly-views": "node scripts/backfill-monthly-views.js",
     "backfill:tiktok-monthly": "node scripts/backfill-tiktok-monthly.js"
   },
-  "dependencies": {
-    "nodemailer": "^9.0.3"
-  },
+  "dependencies": {},
   "engines": {
     "node": ">=20"
   }

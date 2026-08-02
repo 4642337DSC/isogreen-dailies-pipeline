@@ -10,10 +10,7 @@ export function getConfig() {
     ZERNIO_TIKTOK_ACCOUNT_ID: process.env.ZERNIO_TIKTOK_ACCOUNT_ID || null,
     CHANNEL_STATS_DATABASE_ID: process.env.CHANNEL_STATS_DATABASE_ID || null,
     MONTHLY_VIEWS_DATABASE_ID: process.env.MONTHLY_VIEWS_DATABASE_ID || null,
-    TIKTOK_SNAPSHOT_DATABASE_ID: process.env.TIKTOK_SNAPSHOT_DATABASE_ID || null,
-    NOTIFY_EMAIL: process.env.NOTIFY_EMAIL || null,
-    GMAIL_USER: process.env.GMAIL_USER || null,
-    GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD || null
+    TIKTOK_SNAPSHOT_DATABASE_ID: process.env.TIKTOK_SNAPSHOT_DATABASE_ID || null
   };
 }
 
@@ -27,5 +24,5 @@ export var NOTION_VERSION = '2022-06-28';
 export var GRAPH_API_VERSION = 'v25.0';
 export var TEXT_MATCH_THRESHOLD = 0.32;
 export var TEXT_MARGIN = 0.06;
-export var UNMATCHED_EMAIL_CAP = 20;
+export var UNMATCHED_SUMMARY_CAP = 20;
 export var MONTHLY_LOOKBACK_MONTHS = 15;

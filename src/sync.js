@@ -10,7 +10,7 @@ import { syncAudience } from './audience.js';
 import { syncMonthlyViews } from './monthlyViews.js';
 import { syncThumbnails } from './thumbnails.js';
 import { buildDashboard } from './dashboard.js';
-import { sendSummaryEmail } from './email.js';
+import { writeSyncSummary } from './summary.js';
 
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
 var DIST_DIR = path.join(__dirname, '..', 'dist', 'clients', 'isogreen');
@@ -43,7 +43,7 @@ export async function syncAllViews() {
     await buildDashboard(cfg, thumbMap, DIST_DIR);
   } catch (e) { console.log('Dashboard build failed: ' + e); }
 
-  await sendSummaryEmail(cfg, { yt: yt, fb: fb, ig: ig, tt: tt });
+  await writeSyncSummary({ yt: yt, fb: fb, ig: ig, tt: tt });
 }
 
 // This file is only ever invoked directly (npm run sync / GitHub Actions),
