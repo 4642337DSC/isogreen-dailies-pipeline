@@ -23,9 +23,9 @@ export async function writeSyncSummary(report) {
       });
     }
     if (section.unmatched.length) {
-      var shown = section.unmatched.slice(0, UNMATCHED_EMAIL_CAP);
+      var shown = section.unmatched.slice(0, UNMATCHED_SUMMARY_CAP);
       lines.push('  - Unmatched (' + section.unmatched.length +
-        (section.unmatched.length > UNMATCHED_EMAIL_CAP ? ', showing first ' + UNMATCHED_EMAIL_CAP : '') + '):');
+        (section.unmatched.length > UNMATCHED_SUMMARY_CAP ? ', showing first ' + UNMATCHED_SUMMARY_CAP : '') + '):');
       shown.forEach(function (r) { lines.push('    - ' + r.name); });
     }
   });
