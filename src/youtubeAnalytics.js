@@ -1,5 +1,5 @@
 import { fetchJson } from './http.js';
-import { isoDate, monthRangeSince } from './util.js';
+import { isoDate } from './util.js';
 
 // YouTube Analytics needs an OAuth *user* token scoped to the channel owner -
 // the plain API key used elsewhere in youtube.js can't reach it. The token is
@@ -24,27 +24,27 @@ export async function getYouTubeAccessToken(cfg) {
 // Channel-level "views" by calendar month, since oldestDate's month through
 // the current (partial) one - same shape as syncInstagramMonthly/
 // syncFacebookMonthly so it drops straight into writeMonthlyViews.
+//
+// dimensions=month turned out to be unusable: the Analytics API insists both
+// startDate/endDate "align" to a month boundary, but a month's last day AND
+// a bare first-of-month endDate both got rejected or silently truncated the
+// range - the latter meant the current in-progress month never got queried
+// at all, so it always came back with no row for "this month" even once new
+// views existed. Pulling day-level data and bucketing it into months
+// ourselves (same approach as syncFacebookMonthly's period=day) sidesteps
+// the whole alignment quirk and naturally includes today's partial month.
 export async function syncYouTubeMonthly(cfg, oldestDate) {
   var accessToken = await getYouTubeAccessToken(cfg);
-  var months = monthRangeSince(oldestDate);
-  if (!months.length) return {};
-
-  // With dimensions=month the Analytics API requires both bounds to
-  // "align" to a month boundary - it rejects an arbitrary mid-month date
-  // AND a month's last day (both tried, both 400'd with the same "does not
-  // align to chosen date dimension" error). Only a bare first-of-month date
-  // is accepted - use the first of the current month as endDate; the API
-  // still returns whatever partial data exists for it so far.
-  var now = new Date();
-  var firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  var start = new Date(Date.UTC(oldestDate.getUTCFullYear(), oldestDate.getUTCMonth(), 1));
+  var end = new Date();
 
   var url = 'https://youtubeanalytics.googleapis.com/v2/reports?' + new URLSearchParams({
     ids: 'channel==MINE',
     metrics: 'views',
-    dimensions: 'month',
-    sort: 'month',
-    startDate: isoDate(months[0].start),
-    endDate: firstOfCurrentMonth.toISOString().slice(0, 10)
+    dimensions: 'day',
+    sort: 'day',
+    startDate: isoDate(start),
+    endDate: isoDate(end)
   }).toString();
 
   var data = await fetchJson(url, { headers: { Authorization: 'Bearer ' + accessToken } });
@@ -52,8 +52,8 @@ export async function syncYouTubeMonthly(cfg, oldestDate) {
 
   var monthly = {};
   (data.rows || []).forEach(function (row) {
-    var monthKey = String(row[0]).slice(0, 7); // API returns "YYYY-MM" (sometimes "YYYY-MM-01") for the month dimension
-    monthly[monthKey] = row[1];
+    var monthKey = String(row[0]).slice(0, 7); // "YYYY-MM-DD" -> "YYYY-MM"
+    monthly[monthKey] = (monthly[monthKey] || 0) + row[1];
   });
   return monthly;
 }
