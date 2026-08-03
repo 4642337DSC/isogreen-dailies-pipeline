@@ -11,6 +11,7 @@ import { syncMonthlyViews } from './monthlyViews.js';
 import { syncDailyViews } from './dailyViews.js';
 import { syncThumbnails } from './thumbnails.js';
 import { buildDashboard, buildClientsIndex } from './dashboard.js';
+import { buildReports } from './reports.js';
 import { writeSyncSummary } from './summary.js';
 
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -61,9 +62,16 @@ export async function syncAllViews() {
     await syncDailyViews(cfg, { fbEnabled: fbEnabled, ytEnabled: ytEnabled });
   } catch (e) { console.log('Daily views sync failed: ' + e); }
 
+  var dashboardData = null;
   try {
-    await buildDashboard(cfg, thumbMap, DIST_DIR);
+    dashboardData = await buildDashboard(cfg, thumbMap, DIST_DIR);
   } catch (e) { console.log('Dashboard build failed: ' + e); }
+
+  if (dashboardData) {
+    try {
+      await buildReports(cfg, dashboardData, DIST_DIR);
+    } catch (e) { console.log('Reports build failed: ' + e); }
+  }
 
   try {
     await buildClientsIndex(CLIENTS_DIR);

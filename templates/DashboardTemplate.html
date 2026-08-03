@@ -192,6 +192,18 @@
   }
   .theme-toggle:hover { color: var(--ink); border-color: var(--ink-2); }
   .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .reports-link {
+    display: inline-block;
+    border: 1px solid var(--border-2);
+    background: var(--surface);
+    color: var(--ink-2);
+    border-radius: 7px;
+    padding: 7px 12px;
+    font-size: 12.5px;
+    text-decoration: none;
+    margin-right: 8px;
+  }
+  .reports-link:hover { color: var(--ink); border-color: var(--ink-2); }
 
   /* ---------- audience strip ---------- */
   .audience-strip {
@@ -761,6 +773,7 @@
       </div>
     </div>
     <div class="masthead-right">
+      <a class="reports-link" href="reports/">Monthly reports</a>
       <button class="theme-toggle" id="themeToggle" type="button" aria-pressed="false">Switch to dark</button>
     </div>
   </header>

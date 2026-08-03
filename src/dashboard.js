@@ -176,6 +176,10 @@ export async function buildDashboard(cfg, thumbMap, outDir) {
   await fs.mkdir(outDir, { recursive: true });
   await fs.writeFile(path.join(outDir, 'index.html'), html, 'utf8');
   console.log('Dashboard written to ' + path.join(outDir, 'index.html'));
+
+  // Returned so callers (src/reports.js, via sync.js) can reuse this same
+  // fetched data instead of re-querying Notion for the same rows/stats.
+  return { rows: rows, audience: audience, monthly: monthly, daily: daily, followerSnapshots: followerSnapshots };
 }
 
 // Static picker page at /clients/ listing every client dashboard - no
