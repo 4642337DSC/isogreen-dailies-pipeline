@@ -1163,7 +1163,7 @@
     var grid = document.getElementById("kpiGrid");
     grid.textContent = "";
 
-    function tile(label, platformKey, value, sub) {
+    function tile(label, platformKey, value, sub, isEstimated) {
       var el = document.createElement("div");
       el.className = "kpi";
       var lab = document.createElement("div");
@@ -1181,8 +1181,8 @@
       lab.appendChild(labText);
       var val = document.createElement("div");
       val.className = "kpi-value";
-      val.title = fmtFull(value);
-      val.textContent = fmtCompact(value);
+      val.textContent = fmtCompact(value) + (isEstimated ? "*" : "");
+      val.title = fmtFull(value) + (isEstimated ? " (includes an estimated platform - no real API data for part of this range)" : "");
       var subEl = document.createElement("div");
       subEl.className = "kpi-sub";
       subEl.textContent = sub;
@@ -1190,11 +1190,11 @@
       grid.appendChild(el);
     }
 
-    tile("Total views", null, sums.total, rows.length.toLocaleString("en-US") + " shorts in range" + (totalIsReal ? "" : " (est.)"));
-    tile("YouTube", "yt", sums.yt, counts.yt + " tracked" + (isReal.yt ? "" : " (est.)"));
-    tile("TikTok", "tt", sums.tt, counts.tt + " tracked");
-    tile("Instagram", "ig", sums.ig, counts.ig + " tracked" + (isReal.ig ? "" : " (est.)"));
-    tile("Facebook", "fb", sums.fb, counts.fb + " tracked" + (isReal.fb ? "" : " (est.)"));
+    tile("Total views", null, sums.total, rows.length.toLocaleString("en-US") + " shorts in range" + (totalIsReal ? "" : " (est.)"), !totalIsReal);
+    tile("YouTube", "yt", sums.yt, counts.yt + " tracked" + (isReal.yt ? "" : " (est.)"), !isReal.yt);
+    tile("TikTok", "tt", sums.tt, counts.tt + " tracked", true);
+    tile("Instagram", "ig", sums.ig, counts.ig + " tracked" + (isReal.ig ? "" : " (est.)"), !isReal.ig);
+    tile("Facebook", "fb", sums.fb, counts.fb + " tracked" + (isReal.fb ? "" : " (est.)"), !isReal.fb);
   }
 
   /* ===================== render: legend + trend chart ===================== */

@@ -95,10 +95,17 @@ function buildNetworkViewsHtml(ym, monthRows, monthly) {
   };
   return ['tt', 'yt', 'fb', 'ig'].map(function (key) {
     var meta = PLATFORM_META[key];
-    var isEstimate = key === 'tt';
+    // TikTok has no monthly-capable API at all - shown as an editable
+    // number (pre-filled with the estimate) so it can be corrected with a
+    // real figure before generating the PDF, per-report, without needing
+    // a backend to persist it. Browsers print an <input>'s current value
+    // by default, so no separate print-only element is needed.
+    var valueHtml = key === 'tt'
+      ? '<input class="stat-input" type="number" value="' + (values.tt == null ? '' : values.tt) + '" aria-label="TikTok views (editable)">'
+      : '<div class="stat-value">' + fmtFull(values[key]) + '</div>';
     return '<div class="stat-item">' +
       '<div class="stat-badge" style="background:' + meta.color + '">' + meta.label.slice(0, 2).toUpperCase() + '</div>' +
-      '<div><div class="stat-value">' + fmtFull(values[key]) + (isEstimate ? '*' : '') + '</div></div>' +
+      '<div>' + valueHtml + '</div>' +
       '</div>';
   }).join('\n');
 }

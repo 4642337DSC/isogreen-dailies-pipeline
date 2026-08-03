@@ -77,6 +77,17 @@ export async function createNotionPage(cfg, databaseId, properties) {
   });
 }
 
+// Moves a page to Notion's trash - for one-time cleanup of bad historical
+// rows (see scripts/backfill-clean-instagram-zero-views.js). Distinct from
+// updateNotionPage, which only ever touches properties.
+export async function archiveNotionPage(cfg, pageId) {
+  await fetchJson('https://api.notion.com/v1/pages/' + pageId, {
+    method: 'PATCH',
+    headers: notionHeaders(cfg),
+    body: JSON.stringify({ archived: true })
+  });
+}
+
 export async function queryNotionDatabase(cfg, databaseId, payload) {
   return fetchJson('https://api.notion.com/v1/databases/' + databaseId + '/query', {
     method: 'POST',

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deviz __COD__ — __CLIENT_NAME__</title>
+<title>__CLIENT_NAME__ - __MONTH_LABEL__ - report</title>
 <meta name="description" content="Raport lunar de performanță pentru __CLIENT_NAME__." />
 <style>
 /*__FONT_FACE__*/
@@ -17,6 +17,7 @@
   --border: rgba(255,255,255,0.10);
   --border-2: rgba(255,255,255,0.18);
   --accent: #8f7fe0;
+  --accent-ink: #0d0d0d;
   --p-yt: #FF453B;
   --p-tt: #0DA89F;
   --p-ig: #C061E0;
@@ -36,13 +37,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 .wrap { max-width: 900px; margin: 0 auto; padding: 48px 28px 64px; }
-.brand { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 13px; color: var(--muted); margin-bottom: 48px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 48px; flex-wrap: wrap; }
+.brand { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 13px; color: var(--muted); }
+.generate-btn {
+  border: none;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.generate-btn:hover { opacity: 0.9; }
 .hero { text-align: center; margin-bottom: 48px; }
 .hero-title { font-family: var(--font-display); font-weight: 700; font-size: 56px; letter-spacing: -0.02em; margin: 0 0 6px; }
 .hero-sub { font-size: 15px; color: var(--ink-2); margin: 0 0 4px; }
 .hero-client { font-size: 15px; color: var(--muted); }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px; margin-bottom: 22px; }
 .card-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin-bottom: 14px; }
+.card-hint { font-size: 11.5px; color: var(--muted); margin-bottom: 14px; margin-top: -10px; }
 table { border-collapse: collapse; width: 100%; }
 th, td { padding: 9px 10px; text-align: right; font-size: 13.5px; border-bottom: 1px solid var(--border); }
 th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2) { text-align: left; }
@@ -54,22 +69,37 @@ td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: v
 .stat-item { display: flex; align-items: center; gap: 10px; }
 .stat-badge { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex: none; font-family: var(--font-display); font-weight: 700; font-size: 11px; color: #fff; }
 .stat-value { font-family: var(--font-mono); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat-input {
+  font-family: var(--font-mono); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums;
+  background: transparent; color: var(--ink); border: 1px solid var(--border-2); border-radius: 6px;
+  padding: 2px 6px; width: 110px;
+}
 .stat-delta { font-size: 12.5px; color: var(--accent); font-family: var(--font-mono); margin-left: 6px; }
 .stat-delta.unknown { color: var(--muted); }
+.comments-input {
+  width: 100%; min-height: 90px; resize: vertical;
+  background: var(--surface-2); color: var(--ink); border: 1px solid var(--border-2); border-radius: 8px;
+  padding: 10px 12px; font-family: var(--font-body); font-size: 14px; line-height: 1.5;
+}
 .month-note { text-align: center; color: var(--ink-2); font-size: 14px; margin: 40px 0 8px; }
 .month-note b { color: var(--ink); }
 footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 8px; }
 footer a { color: var(--accent); }
-.caveat { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 28px; max-width: 560px; margin-left: auto; margin-right: auto; }
+.caveat { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 28px; max-width: 620px; margin-left: auto; margin-right: auto; }
 @media print {
   body { background: #fff; color: #000; }
   .card { break-inside: avoid; }
+  .no-print { display: none !important; }
+  .stat-input, .comments-input { border-color: #999; }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="brand">__CLIENT_NAME__</div>
+  <div class="toolbar">
+    <div class="brand">__CLIENT_NAME__</div>
+    <button class="generate-btn no-print" type="button" onclick="window.print()">Generate PDF</button>
+  </div>
 
   <div class="hero">
     <div class="hero-title">Deviz</div>
@@ -91,6 +121,7 @@ footer a { color: var(--accent); }
 
   <div class="card">
     <div class="card-title">Vizualizări după rețea — __MONTH_NAME_RO__</div>
+    <div class="card-hint no-print">TikTok nu are un API cu istoric - editează valoarea mai jos înainte de a genera PDF-ul.</div>
     <div class="stat-grid">
 /*__NETWORK_VIEWS_HTML__*/
     </div>
@@ -103,9 +134,15 @@ footer a { color: var(--accent); }
     </div>
   </div>
 
+  <div class="card">
+    <div class="card-title">Comentarii</div>
+    <div class="card-hint no-print">Opțional - apare în PDF-ul generat. Nu se salvează după ce închizi pagina.</div>
+    <textarea class="comments-input" placeholder="Adaugă un comentariu pentru acest raport…"></textarea>
+  </div>
+
   <div class="month-note">Devizul corespunde lunii <b>__MONTH_NAME_RO__</b></div>
   <footer>Toate materialele produse pot fi găsite <a href="__DASHBOARD_LINK__">aici</a></footer>
-  <div class="caveat">Vizualizările Facebook/Instagram/YouTube provin din API-ul propriu al fiecărei platforme; TikTok este estimat din vizualizările curente ale materialelor postate în lună, neavând un API de tip serie istorică. Cifra Facebook poate diferi ușor de valoarea „3 second view" din Meta Business Suite.</div>
+  <div class="caveat">Vizualizările Facebook/Instagram/YouTube provin din API-ul propriu al fiecărei platforme (nu din Meta Business Suite); TikTok este estimat din vizualizările curente ale materialelor postate în lună, neavând un API de tip serie istorică — editabil mai sus. Cifra Facebook poate diferi semnificativ de valoarea „3 second view" din Meta Business Suite, care folosește o definiție mai permisivă a unei vizualizări.</div>
 </div>
 </body>
 </html>
