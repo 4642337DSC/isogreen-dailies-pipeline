@@ -1124,8 +1124,18 @@
     var sums = { tt: fallbackSums.tt };
     ["yt", "fb", "ig"].forEach(function (key) {
       var real = sumDailyViews(key, start, end);
-      if (real !== null) { sums[key] = real; isReal[key] = true; }
-      else { sums[key] = fallbackSums[key]; }
+      // A real API sum of exactly 0 despite real per-video totals existing
+      // for posts in the same range is more likely an unpopulated
+      // account-level aggregate than an honest zero - confirmed for
+      // Instagram's "views" metric specifically, which has no historical
+      // backfill before whenever it started actually accumulating for this
+      // account, even though individual per-video insights go back further.
+      // Trust the per-video fallback instead when that happens.
+      if (real !== null && !(real === 0 && fallbackSums[key] > 0)) {
+        sums[key] = real; isReal[key] = true;
+      } else {
+        sums[key] = fallbackSums[key];
+      }
     });
     sums.total = sums.yt + sums.fb + sums.ig + sums.tt;
     var totalIsReal = isReal.yt && isReal.fb && isReal.ig;
