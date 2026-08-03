@@ -7,7 +7,10 @@
 <meta name="description" content="Generator de rapoarte lunare pentru __CLIENT_NAME__." />
 <style>
 /*__FONT_FACE__*/
-@page { margin: 0; }
+/* Left/right/bottom flush with the paper edge, but a small top margin so
+   whichever card lands first on a page (e.g. Urmăritori, if it's pushed
+   to a new page) isn't glued to the very top of the sheet. */
+@page { margin: 10mm 0 0 0; }
 :root {
   --bg: #0d0d0d;
   --surface: #1a1a19;
@@ -68,8 +71,7 @@ body {
   background-position: center;
 }
 .brand-badge {
-  position: absolute; top: 20px; right: 24px; width: 40px; height: 40px;
-  background: #fff; border-radius: 10px; padding: 5px; box-sizing: border-box;
+  position: absolute; top: 20px; right: 24px; width: 46px; height: 46px;
 }
 .brand-badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .hero { text-align: center; margin-top: 22px; }
@@ -100,6 +102,9 @@ td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: v
   background: transparent; color: var(--ink); border: 1px solid var(--border-2); border-radius: 6px;
   padding: 2px 6px; width: 120px;
 }
+.stat-delta-input {
+  font-size: 12.5px; font-weight: 600; color: var(--accent); width: 62px; padding: 2px 5px; margin-left: 4px;
+}
 .stat-delta { font-size: 12.5px; color: var(--accent); font-family: var(--font-mono); margin-left: 6px; }
 .comments-input {
   width: 100%; min-height: 90px; resize: vertical;
@@ -108,7 +113,7 @@ td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: v
 }
 .month-note { text-align: center; color: var(--ink-2); font-size: 14px; margin: 40px 0 20px; }
 .month-note b { color: var(--ink); }
-.footer-logo { margin: 0 auto 14px; width: 38px; height: 38px; background: #fff; border-radius: 10px; padding: 5px; box-sizing: border-box; }
+.footer-logo { margin: 0 auto 14px; width: 34px; height: 34px; }
 .footer-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
 footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 8px; }
 footer a { color: var(--accent); }
@@ -118,7 +123,10 @@ footer a { color: var(--accent); }
   .card { break-inside: avoid; }
   .no-print { display: none !important; }
   .print-hide { display: none !important; }
-  .stat-input, .comments-input { border-color: #999; }
+  /* Editable fields should read as plain figures in the exported PDF, not
+     as visible form controls - no border/background contour. */
+  .stat-input { border: none; background: transparent; padding: 2px 0; }
+  .comments-input { border-color: #999; }
 }
 </style>
 </head>
@@ -145,7 +153,7 @@ footer a { color: var(--accent); }
   </div>
 
   <div class="hero-banner">
-    <div class="brand-badge"><img src="assets/upfilm-logo.png" alt="Upfilm"></div>
+    <div class="brand-badge"><img src="assets/upfilm-logo-white.png" alt="Upfilm"></div>
     <div class="hero">
       <div class="hero-title">Deviz</div>
       <div class="hero-sub" id="heroSub"></div>
@@ -181,7 +189,7 @@ footer a { color: var(--accent); }
   </div>
 
   <div class="month-note">Devizul corespunde lunii <b id="monthNoteLabel"></b></div>
-  <div class="footer-logo"><img src="assets/upfilm-logo.png" alt="Upfilm"></div>
+  <div class="footer-logo"><img src="assets/upfilm-logo-transparent.png" alt="Upfilm"></div>
   <footer>Toate materialele produse pot fi găsite <a href="https://drive.google.com/open?id=1iG3hui_QPBj9qK22AVFlbywQZzq2YjC8&usp=drive_fs" target="_blank" rel="noopener">aici</a></footer>
   <div class="caveat">Vizualizările Facebook/Instagram/YouTube provin din API-ul propriu al fiecărei platforme (nu din Meta Business Suite). TikTok este estimat din vizualizările curente ale materialelor postate în lună, neavând un API de tip serie istorică — editabil mai sus. Cifra Facebook poate diferi semnificativ de valoarea folosită precedent „3 second view” din Meta Business Suite, care folosește o definiție mai permisivă a unei vizualizări.</div>
 </div>
@@ -300,6 +308,13 @@ function buildNetworkViewsHtml(ym, monthRows, monthly) {
   }).join("\n");
 }
 
+// Both the follower count and its month-over-month delta are editable text
+// inputs, pre-filled with the best figure this pipeline can compute (real
+// snapshot data where available, falling back to the earliest snapshot on
+// record when there's nothing at the exact previous-month boundary - e.g.
+// Instagram's ~30-day API history). TikTok has no automated follower
+// tracking at all, so both fields simply start blank for manual entry,
+// same convention as its views figure above.
 function buildFollowerStatsHtml(ym, followerSnapshots) {
   var monthEnd = lastDayOfMonth(ym);
   var prevMonthEnd = dayBefore(firstDayOfMonth(ym));
@@ -312,14 +327,17 @@ function buildFollowerStatsHtml(ym, followerSnapshots) {
       var dates = Object.keys(series).sort();
       if (dates.length) start = { date: dates[0], value: series[dates[0]] };
     }
-    var deltaHtml = "";
+    var deltaVal = "";
     if (typeof end.value === "number" && typeof start.value === "number" && start.date !== end.date) {
       var delta = end.value - start.value;
-      deltaHtml = '<span class="stat-delta">(' + (delta >= 0 ? "+" : "") + delta.toLocaleString("en-US") + ")</span>";
+      deltaVal = (delta >= 0 ? "+" : "") + delta.toLocaleString("en-US");
     }
     return '<div class="stat-item">' +
       '<div class="stat-badge" style="background:' + meta.color + '">' + PLATFORM_ICON_SVG[key] + "</div>" +
-      '<div><div class="stat-value">' + fmtFull(end.value) + deltaHtml + "</div></div>" +
+      "<div>" +
+      '<input class="stat-input" type="text" inputmode="numeric" value="' + (end.value == null ? "" : fmtFull(end.value)) + '" aria-label="' + meta.label + ' followers (editable)">' +
+      '<input class="stat-input stat-delta-input" type="text" value="' + deltaVal + '" aria-label="' + meta.label + ' follower change (editable)">' +
+      "</div>" +
       "</div>";
   }).join("\n");
 }
