@@ -68,10 +68,17 @@ export async function fetchFacebookDailyViews(cfg, start, end) {
     var data = await fetchJson(url);
     if (data.error) throw new Error('Facebook daily insights fetch failed: ' + JSON.stringify(data.error));
 
+    // Meta's end_time for a period=day point is the EXCLUSIVE end boundary
+    // (i.e. midnight starting the *next* day), not a timestamp inside the
+    // day the point describes - using it directly mislabels every day's
+    // data as the following day (most visible for "today," which was
+    // showing up as tomorrow with a still-partial view count, while every
+    // other platform correctly had nothing for that not-yet-real date).
+    // Stepping back 1 second lands safely inside the actual day.
     var series = (data.data && data.data.length) ? (data.data[0].values || []) : [];
     series.forEach(function (point) {
       if (typeof point.value !== 'number' || !point.end_time) return;
-      var dateKey = dateKeyInTz(point.end_time);
+      var dateKey = dateKeyInTz(new Date(new Date(point.end_time).getTime() - 1000).toISOString());
       daily[dateKey] = (daily[dateKey] || 0) + point.value;
     });
 

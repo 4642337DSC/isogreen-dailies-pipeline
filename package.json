@@ -11,7 +11,8 @@
     "backfill:tiktok-monthly": "node scripts/backfill-tiktok-monthly.js",
     "backfill:create-daily-views-db": "node scripts/backfill-create-daily-views-db.js",
     "backfill:daily-views": "node scripts/backfill-daily-views.js",
-    "backfill:create-follower-snapshots-db": "node scripts/backfill-create-follower-snapshots-db.js"
+    "backfill:create-follower-snapshots-db": "node scripts/backfill-create-follower-snapshots-db.js",
+    "backfill:fix-facebook-daily": "node scripts/backfill-fix-facebook-daily.js"
   },
   "dependencies": {},
   "engines": {
