@@ -402,6 +402,28 @@
   .tooltip-val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
 
   /* ---------- top performers ---------- */
+  .perf-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .perf-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border-2);
+    background: var(--surface);
+    color: var(--ink-2);
+    border-radius: 999px;
+    padding: 6px 14px 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+  .perf-filter-chip:hover { background: var(--surface-2); color: var(--ink); }
+  .perf-filter-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .perf-filter-chip[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
   .perf-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
@@ -496,6 +518,7 @@
   }
 
   /* ---------- monthly breakdown ---------- */
+  .month-sort { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .month-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
   @media (max-width: 860px) {
     .month-list { grid-template-columns: repeat(2, 1fr); }
@@ -557,7 +580,7 @@
   }
   .show-more-btn:hover { background: var(--surface-2); color: var(--ink); }
   .show-more-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  .table-scroll { overflow-x: visible; border: 1px solid var(--border); border-radius: 10px; }
   table { border-collapse: collapse; width: 100%; table-layout: auto; }
   thead th {
     position: sticky; top: 0;
@@ -783,13 +806,22 @@
       <div class="card-title">Top performers</div>
       <div class="card-note" id="rankNote">Ranked by total views</div>
     </div>
+    <div class="perf-filters" id="perfFilters" role="group" aria-label="Filter by platform"></div>
     <div class="perf-grid" id="rankList"></div>
+    <div class="table-more" id="perfMore"></div>
   </section>
 
   <section class="card">
     <div class="card-head">
       <div class="card-title">Monthly breakdown</div>
       <div class="card-note" id="monthlyNote">Total views and shorts posted, by month</div>
+    </div>
+    <div class="month-sort" role="group" aria-label="Sort months by">
+      <button class="chip month-sort-chip" data-sort="date-desc" type="button" aria-pressed="true">Newest</button>
+      <button class="chip month-sort-chip" data-sort="date-asc" type="button" aria-pressed="false">Oldest</button>
+      <button class="chip month-sort-chip" data-sort="views-desc" type="button" aria-pressed="false">Most views</button>
+      <button class="chip month-sort-chip" data-sort="views-asc" type="button" aria-pressed="false">Fewest views</button>
+      <button class="chip month-sort-chip" data-sort="shorts-desc" type="button" aria-pressed="false">Most shorts</button>
     </div>
     <div class="month-list" id="monthList"></div>
   </section>
@@ -966,8 +998,12 @@
   // customTo (both null by default) take over once the date inputs are
   // edited by hand, clearing activePreset - either bound alone is a valid
   // open-ended range (e.g. customFrom only = "from that date through now").
-  var state = { activePreset: "all", customFrom: null, customTo: null, sortKey: "date", sortDir: "desc", search: "", tableLimit: 5, chartTab: "daily" };
+  var state = {
+    activePreset: "all", customFrom: null, customTo: null, sortKey: "date", sortDir: "desc", search: "", tableLimit: 5, chartTab: "daily",
+    perfPlatforms: ["yt", "tt", "ig", "fb"], perfLimit: 6, monthSort: "date-desc"
+  };
   var TABLE_PAGE_STEPS = [5, 15, Infinity]; // initial view, "Show more" (+10), "Show all"
+  var PERF_PAGE_STEPS = [6, 12]; // initial view, "Show more" (+6)
 
   // { start, end } for a named preset key - end === null means "open,
   // through whatever the latest real data is" (current year/month, and the
@@ -1369,16 +1405,70 @@
   }
 
   /* ===================== render: top performers ===================== */
+  function renderPerfFilters() {
+    var wrap = document.getElementById("perfFilters");
+    wrap.textContent = "";
+    PLATFORMS.forEach(function (p) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "perf-filter-chip";
+      var active = state.perfPlatforms.indexOf(p.key) !== -1;
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+      btn.appendChild(platformIcon(p.key, "sm"));
+      var txt = document.createElement("span");
+      txt.textContent = p.label;
+      btn.appendChild(txt);
+      btn.addEventListener("click", function () {
+        var idx = state.perfPlatforms.indexOf(p.key);
+        if (idx !== -1) {
+          if (state.perfPlatforms.length === 1) return; // keep at least one platform selected
+          state.perfPlatforms.splice(idx, 1);
+        } else {
+          state.perfPlatforms.push(p.key);
+        }
+        state.perfLimit = PERF_PAGE_STEPS[0];
+        renderPerfFilters();
+        renderRank();
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
   function renderRank() {
     var rows = filteredData();
-    var ranked = rows.map(function (r) { return { r: r, t: total(r) }; })
-      .sort(function (a, b) { return b.t - a.t; })
-      .slice(0, 8);
+    var activePlatforms = PLATFORMS.filter(function (p) { return state.perfPlatforms.indexOf(p.key) !== -1; });
+    var ranked = rows
+      .filter(function (r) { return activePlatforms.some(function (p) { return r[p.key] !== null; }); })
+      .map(function (r) {
+        var t = activePlatforms.reduce(function (sum, p) { return sum + (r[p.key] || 0); }, 0);
+        return { r: r, t: t };
+      })
+      .sort(function (a, b) { return b.t - a.t; });
+
+    var visible = ranked.slice(0, state.perfLimit);
     var grid = document.getElementById("rankList");
     grid.textContent = "";
-    document.getElementById("rankNote").textContent = "Top " + ranked.length + " of " + rows.length + " in range, by total views";
+    document.getElementById("rankNote").textContent = "Top " + visible.length + " of " + ranked.length + " in range, by total views";
 
-    ranked.forEach(function (item, idx) {
+    var moreWrap = document.getElementById("perfMore");
+    moreWrap.textContent = "";
+    if (state.perfLimit < ranked.length) {
+      var stepIdx = PERF_PAGE_STEPS.indexOf(state.perfLimit);
+      var nextLimit = PERF_PAGE_STEPS[stepIdx + 1];
+      if (nextLimit !== undefined) {
+        var moreBtn = document.createElement("button");
+        moreBtn.type = "button";
+        moreBtn.className = "show-more-btn";
+        moreBtn.textContent = "Show more";
+        moreBtn.addEventListener("click", function () {
+          state.perfLimit = nextLimit;
+          renderRank();
+        });
+        moreWrap.appendChild(moreBtn);
+      }
+    }
+
+    visible.forEach(function (item, idx) {
       var r = item.r;
       var card = document.createElement("div");
       card.className = "perf-card";
@@ -1391,7 +1481,7 @@
 
       var viewsTop = document.createElement("div");
       viewsTop.className = "perf-views-top";
-      PLATFORMS.forEach(function (p) {
+      activePlatforms.forEach(function (p) {
         var v = r[p.key];
         if (v === null || v === undefined) return;
         var chip = document.createElement("span");
@@ -1466,7 +1556,6 @@
         return (!start || (ym + "-01") >= start.slice(0, 7) + "-01") &&
                (!end || (ym + "-01") <= end.slice(0, 7) + "-01");
       })
-      .sort().reverse()
       .map(function (ym) {
         var rowsInMonth = DATA.filter(function (r) { return r.date.slice(0, 7) === ym; });
         var apiTotal = 0, hasApiData = false;
@@ -1485,6 +1574,16 @@
         }
         return { ym: ym, rows: rowsInMonth, total: apiTotal, estimated: estimated, platformsWithData: platformsWithData };
       });
+
+    months.sort(function (a, b) {
+      switch (state.monthSort) {
+        case "date-asc": return a.ym < b.ym ? -1 : a.ym > b.ym ? 1 : 0;
+        case "views-desc": return b.total - a.total;
+        case "views-asc": return a.total - b.total;
+        case "shorts-desc": return b.rows.length - a.rows.length;
+        default: return a.ym < b.ym ? 1 : a.ym > b.ym ? -1 : 0; // "date-desc"
+      }
+    });
 
     var wrap = document.getElementById("monthList");
     wrap.textContent = "";
@@ -1813,6 +1912,16 @@
     });
   });
 
+  Array.prototype.forEach.call(document.querySelectorAll(".month-sort-chip"), function (btn) {
+    btn.addEventListener("click", function () {
+      state.monthSort = btn.dataset.sort;
+      Array.prototype.forEach.call(document.querySelectorAll(".month-sort-chip"), function (b) {
+        b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+      });
+      renderMonthly();
+    });
+  });
+
   var rangeFromInput = document.getElementById("rangeFrom");
   var rangeToInput = document.getElementById("rangeTo");
 
@@ -1828,6 +1937,7 @@
       state.customFrom = null;
       state.customTo = null;
       state.tableLimit = TABLE_PAGE_STEPS[0];
+      state.perfLimit = PERF_PAGE_STEPS[0];
       var preset = computeRangePreset(state.activePreset);
       rangeFromInput.value = preset.start || "";
       rangeToInput.value = preset.end || "";
@@ -1844,6 +1954,7 @@
     state.customTo = rangeToInput.value || null;
     state.activePreset = null;
     state.tableLimit = TABLE_PAGE_STEPS[0];
+    state.perfLimit = PERF_PAGE_STEPS[0];
     rangeToInput.min = state.customFrom || "";
     rangeFromInput.max = state.customTo || "";
     if (state.customFrom || state.customTo) {
@@ -1910,6 +2021,7 @@
   })();
 
   renderLegend();
+  renderPerfFilters();
   renderTheadOnce();
   renderAudience();
   renderAll();
