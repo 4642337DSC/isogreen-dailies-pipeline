@@ -16,6 +16,19 @@ var __dirname = path.dirname(fileURLToPath(import.meta.url));
 var CLIENTS_DIR = path.join(__dirname, '..', 'dist', 'clients');
 var DIST_DIR = path.join(CLIENTS_DIR, 'isogreen');
 
+// Earliest "Data Postare" across every tracked row - the actual start of the
+// account's history, used as the monthly-views lookback boundary instead of
+// a fixed window, so the full available history gets pulled.
+function oldestPostDate(rows) {
+  var oldest = null;
+  rows.forEach(function (r) {
+    if (!r.postDate) return;
+    var d = new Date(r.postDate + 'T00:00:00Z');
+    if (!oldest || d < oldest) oldest = d;
+  });
+  return oldest || new Date();
+}
+
 export async function syncAllViews() {
   var cfg = getConfig();
   requireConfig(cfg);
@@ -37,7 +50,8 @@ export async function syncAllViews() {
   try { thumbMap = await syncThumbnails(rows, path.join(DIST_DIR, 'thumbs')); } catch (e) { console.log('Thumbnail sync failed: ' + e); }
 
   try {
-    await syncMonthlyViews(cfg, { fbEnabled: fbEnabled, tiktokEnabled: tiktokEnabled, tt: tt });
+    var oldestDate = oldestPostDate(rows);
+    await syncMonthlyViews(cfg, { fbEnabled: fbEnabled, oldestDate: oldestDate });
   } catch (e) { console.log('Monthly views sync failed: ' + e); }
 
   try {

@@ -1,7 +1,7 @@
 import { fetchJson } from './http.js';
-import { GRAPH_API_VERSION, MONTHLY_LOOKBACK_MONTHS } from './config.js';
+import { GRAPH_API_VERSION } from './config.js';
 import { matchContent, findById, buildPlatformReport } from './notion.js';
-import { monthRangeBack, isoDate } from './util.js';
+import { monthRangeSince, isoDate } from './util.js';
 
 export async function resolveInstagramUserId(cfg) {
   var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + cfg.FB_PAGE_ID +
@@ -80,10 +80,10 @@ export async function syncInstagram(cfg, rows) {
 // into <=30-day sub-windows, each fetched as its own total_value aggregate,
 // and the sub-window totals are summed to get the true month total
 // (non-overlapping total_value windows can just be added).
-export async function syncInstagramMonthly(cfg) {
+export async function syncInstagramMonthly(cfg, oldestDate) {
   var igUserId = await resolveInstagramUserId(cfg);
   var monthly = {};
-  var months = monthRangeBack(MONTHLY_LOOKBACK_MONTHS);
+  var months = monthRangeSince(oldestDate);
   var now = new Date();
 
   for (var m of months) {

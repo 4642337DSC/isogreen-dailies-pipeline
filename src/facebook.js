@@ -1,5 +1,5 @@
 import { fetchJson } from './http.js';
-import { GRAPH_API_VERSION, MONTHLY_LOOKBACK_MONTHS } from './config.js';
+import { GRAPH_API_VERSION } from './config.js';
 import { matchContent, findById, buildPlatformReport } from './notion.js';
 import { dateKeyInTz } from './util.js';
 
@@ -48,13 +48,12 @@ export async function syncFacebook(cfg, rows) {
 // Same chunking/bucketing approach as Instagram. Covers all Page video
 // content (Reels included, but not Reels-exclusive - Meta has no
 // Reels-only equivalent at the Page level).
-export async function syncFacebookMonthly(cfg) {
+export async function syncFacebookMonthly(cfg, oldestDate) {
   var monthly = {};
 
   var end = new Date();
   var chunkEnd = new Date(end);
-  var oldestNeeded = new Date();
-  oldestNeeded.setMonth(oldestNeeded.getMonth() - MONTHLY_LOOKBACK_MONTHS);
+  var oldestNeeded = new Date(Date.UTC(oldestDate.getUTCFullYear(), oldestDate.getUTCMonth(), 1));
 
   while (chunkEnd > oldestNeeded) {
     var chunkStart = new Date(chunkEnd);

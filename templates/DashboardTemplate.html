@@ -1209,10 +1209,18 @@
   // that predate API tracking entirely (no platform has data yet), where
   // this falls back to summing that month's posted shorts and marks the
   // total with "*" so it's not confused with a real API figure.
+  // Monthly Breakdown only ever covers platforms with a real (or at least
+  // per-video-summable) monthly signal - Instagram + Facebook. YouTube's
+  // monthly API isn't wired up yet, and TikTok has no monthly API at all
+  // (its old snapshot-derived estimate was removed as unreliable) - both
+  // wait until a real per-platform monthly source exists rather than
+  // showing an approximate number here.
+  var MONTHLY_PLATFORMS = PLATFORMS.filter(function (p) { return p.key === "fb" || p.key === "ig"; });
+
   function renderMonthly() {
     var start = rangeStartDate();
     var monthKeys = {};
-    PLATFORMS.forEach(function (p) {
+    MONTHLY_PLATFORMS.forEach(function (p) {
       var m = MONTHLY_VIEWS[p.key] || {};
       Object.keys(m).forEach(function (ym) { monthKeys[ym] = true; });
     });
@@ -1225,16 +1233,16 @@
         var rowsInMonth = DATA.filter(function (r) { return r.date.slice(0, 7) === ym; });
         var apiTotal = 0, hasApiData = false;
         var platformsWithData = {};
-        PLATFORMS.forEach(function (p) {
+        MONTHLY_PLATFORMS.forEach(function (p) {
           var v = MONTHLY_VIEWS[p.key] && MONTHLY_VIEWS[p.key][ym];
           if (typeof v === "number") { apiTotal += v; hasApiData = true; platformsWithData[p.key] = true; }
         });
         var estimated = false;
         if (!hasApiData) {
-          apiTotal = rowsInMonth.reduce(function (sum, r) { return sum + total(r); }, 0);
+          apiTotal = rowsInMonth.reduce(function (sum, r) { return sum + (r.fb || 0) + (r.ig || 0); }, 0);
           estimated = true;
           rowsInMonth.forEach(function (r) {
-            PLATFORMS.forEach(function (p) { if (r[p.key] !== null) platformsWithData[p.key] = true; });
+            MONTHLY_PLATFORMS.forEach(function (p) { if (r[p.key] !== null) platformsWithData[p.key] = true; });
           });
         }
         return { ym: ym, rows: rowsInMonth, total: apiTotal, estimated: estimated, platformsWithData: platformsWithData };
@@ -1538,12 +1546,19 @@
   });
 
   var themeBtn = document.getElementById("themeToggle");
-  themeBtn.addEventListener("click", function () {
+  function currentlyDark() {
     var root = document.documentElement;
-    var isDark = root.getAttribute("data-theme") === "dark"
+    return root.getAttribute("data-theme") === "dark"
       || (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    var next = isDark ? "light" : "dark";
-    root.setAttribute("data-theme", next);
+  }
+  // Sync the button's label to the auto-detected system theme on first
+  // load, not just after a click - otherwise a system already in dark mode
+  // still shows "Switch to dark" until you toggle it once.
+  themeBtn.textContent = currentlyDark() ? "Switch to light" : "Switch to dark";
+  themeBtn.setAttribute("aria-pressed", currentlyDark() ? "true" : "false");
+  themeBtn.addEventListener("click", function () {
+    var next = currentlyDark() ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
     themeBtn.textContent = next === "dark" ? "Switch to light" : "Switch to dark";
     themeBtn.setAttribute("aria-pressed", next === "dark" ? "true" : "false");
     renderTrend();

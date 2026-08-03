@@ -87,13 +87,3 @@ export async function syncYouTube(cfg, rows) {
 
   return buildPlatformReport(rows, results);
 }
-
-// Real per-month view totals need the YouTube Analytics API (an OAuth-scoped
-// advanced service in Apps Script). Node has no equivalent set up yet - this
-// intentionally mirrors the old "not configured, skip" behavior rather than
-// silently returning zeros. Wire up a service-account/OAuth client here if
-// this becomes worth the setup.
-export async function syncYouTubeMonthly() {
-  console.log('YouTube monthly sync: YouTube Analytics API not wired up yet - skipping (see src/youtube.js).');
-  return null;
-}

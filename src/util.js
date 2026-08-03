@@ -17,20 +17,21 @@ export function dateKeyInTz(isoString) {
   return isoDate(new Date(isoString));
 }
 
-// Calendar months, oldest-to-newest, covering the last n months up through
+// Calendar months, oldest-to-newest, covering from startDate's month through
 // the current (partial, still in progress) one. Each entry's start/end are
-// UTC-midnight boundaries suitable for since/until unix timestamps.
-export function monthRangeBack(n) {
+// UTC-midnight boundaries suitable for since/until unix timestamps. Used to
+// pull the full available history rather than a fixed lookback window.
+export function monthRangeSince(startDate) {
   var months = [];
-  var cursor = new Date();
-  cursor.setUTCDate(1);
-  cursor.setUTCHours(0, 0, 0, 0);
-  for (var i = 0; i < n; i++) {
+  var cursor = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
+  var now = new Date();
+  var endCursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  while (cursor <= endCursor) {
     var start = new Date(cursor);
     var end = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
     var key = start.getUTCFullYear() + '-' + ('0' + (start.getUTCMonth() + 1)).slice(-2);
-    months.unshift({ start: start, end: end, key: key });
-    cursor.setUTCMonth(cursor.getUTCMonth() - 1);
+    months.push({ start: start, end: end, key: key });
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
   }
   return months;
 }

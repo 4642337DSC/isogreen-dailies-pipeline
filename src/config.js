@@ -9,8 +9,7 @@ export function getConfig() {
     ZERNIO_API_KEY: process.env.ZERNIO_API_KEY || null,
     ZERNIO_TIKTOK_ACCOUNT_ID: process.env.ZERNIO_TIKTOK_ACCOUNT_ID || null,
     CHANNEL_STATS_DATABASE_ID: process.env.CHANNEL_STATS_DATABASE_ID || null,
-    MONTHLY_VIEWS_DATABASE_ID: process.env.MONTHLY_VIEWS_DATABASE_ID || null,
-    TIKTOK_SNAPSHOT_DATABASE_ID: process.env.TIKTOK_SNAPSHOT_DATABASE_ID || null
+    MONTHLY_VIEWS_DATABASE_ID: process.env.MONTHLY_VIEWS_DATABASE_ID || null
   };
 }
 
@@ -25,4 +24,3 @@ export var GRAPH_API_VERSION = 'v25.0';
 export var TEXT_MATCH_THRESHOLD = 0.32;
 export var TEXT_MARGIN = 0.06;
 export var UNMATCHED_SUMMARY_CAP = 20;
-export var MONTHLY_LOOKBACK_MONTHS = 15;
