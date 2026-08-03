@@ -21,12 +21,14 @@ export async function syncThumbnails(rows, thumbsDir) {
   await fs.mkdir(thumbsDir, { recursive: true });
   var map = {};
   var downloaded = 0;
+  var noThumbnailSet = [];
 
   for (var row of rows) {
-    if (!row.thumbnailUrl || !row.cod) continue;
+    if (!row.cod) continue;
+    if (!row.thumbnailUrl) { noThumbnailSet.push(row.cod); continue; }
     try {
       var res = await fetch(row.thumbnailUrl);
-      if (!res.ok) continue;
+      if (!res.ok) { console.log('Thumbnail fetch failed for ' + row.cod + ': HTTP ' + res.status); continue; }
       var contentType = res.headers.get('content-type') || '';
       var ext = extForContentType(contentType);
       var fileName = row.cod + ext;
@@ -38,5 +40,8 @@ export async function syncThumbnails(rows, thumbsDir) {
   }
 
   console.log('Thumbnails: downloaded ' + downloaded + ' file(s) into ' + thumbsDir + '.');
+  if (noThumbnailSet.length) {
+    console.log('Thumbnails: no "Thumbnail" file set in Notion for ' + noThumbnailSet.length + ' row(s): ' + noThumbnailSet.join(', '));
+  }
   return map;
 }
