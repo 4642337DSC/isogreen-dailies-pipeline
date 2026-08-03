@@ -138,7 +138,7 @@ export async function buildDashboard(cfg, thumbMap, outDir) {
     .replace('/*__MONTHLY_VIEWS_DATA__*/', JSON.stringify(monthly))
     .replace('/*__DAILY_VIEWS_DATA__*/', JSON.stringify(daily))
     .replace('__LAST_SYNCED__', isoDate(new Date()))
-    .split('__CLIENT_NAME__').join('Isogreen România');
+    .split('__CLIENT_NAME__').join('ISOGREEN');
 
   await fs.mkdir(outDir, { recursive: true });
   await fs.writeFile(path.join(outDir, 'index.html'), html, 'utf8');
