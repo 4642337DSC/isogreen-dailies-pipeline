@@ -29,12 +29,14 @@ export async function syncYouTubeMonthly(cfg, oldestDate) {
   var months = monthRangeSince(oldestDate);
   if (!months.length) return {};
 
-  // With dimensions=month the Analytics API insists both dates be
-  // month-aligned - endDate has to land on a month's last day, not just
-  // "today", even for the current in-progress month (it still returns
-  // whatever partial data exists so far).
+  // With dimensions=month the Analytics API requires both bounds to
+  // "align" to a month boundary - it rejects an arbitrary mid-month date
+  // AND a month's last day (both tried, both 400'd with the same "does not
+  // align to chosen date dimension" error). Only a bare first-of-month date
+  // is accepted - use the first of the current month as endDate; the API
+  // still returns whatever partial data exists for it so far.
   var now = new Date();
-  var lastDayOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+  var firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
   var url = 'https://youtubeanalytics.googleapis.com/v2/reports?' + new URLSearchParams({
     ids: 'channel==MINE',
@@ -42,7 +44,7 @@ export async function syncYouTubeMonthly(cfg, oldestDate) {
     dimensions: 'month',
     sort: 'month',
     startDate: isoDate(months[0].start),
-    endDate: lastDayOfMonth.toISOString().slice(0, 10)
+    endDate: firstOfCurrentMonth.toISOString().slice(0, 10)
   }).toString();
 
   var data = await fetchJson(url, { headers: { Authorization: 'Bearer ' + accessToken } });
