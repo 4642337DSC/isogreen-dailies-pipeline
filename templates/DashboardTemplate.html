@@ -1806,17 +1806,16 @@
     renderTable();
   }
 
-  // The "current"/"last completed" year+month chips show the actual
-  // year/month name (e.g. "Current year (2026)") rather than a generic
-  // label - computed once from LAST_SYNCED, same reference date the range
-  // presets themselves use.
+  // The "current"/"last completed" year+month chips just show the actual
+  // year/month value (e.g. "2026") - computed once from LAST_SYNCED, same
+  // reference date the range presets themselves use.
   (function labelYearMonthChips() {
     var now = new Date(LAST_SYNCED + "T00:00:00");
     var lastMonthDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 0));
-    document.querySelector('.chip[data-range="year-current"]').textContent = "Current year (" + now.getFullYear() + ")";
-    document.querySelector('.chip[data-range="year-last"]').textContent = "Last completed year (" + (now.getFullYear() - 1) + ")";
-    document.querySelector('.chip[data-range="month-current"]').textContent = "Current month (" + MONTH_NAMES[now.getMonth()] + ")";
-    document.querySelector('.chip[data-range="month-last"]').textContent = "Last completed month (" + MONTH_NAMES[lastMonthDate.getUTCMonth()] + ")";
+    document.querySelector('.chip[data-range="year-current"]').textContent = String(now.getFullYear());
+    document.querySelector('.chip[data-range="year-last"]').textContent = String(now.getFullYear() - 1);
+    document.querySelector('.chip[data-range="month-current"]').textContent = MONTH_NAMES[now.getMonth()];
+    document.querySelector('.chip[data-range="month-last"]').textContent = MONTH_NAMES[lastMonthDate.getUTCMonth()];
   })();
 
   renderLegend();
