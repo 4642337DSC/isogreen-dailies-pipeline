@@ -735,11 +735,11 @@
   <section class="card">
     <div class="card-head">
       <div class="card-title">Reach over time</div>
-      <div class="card-note">Cumulative views, by post date, per platform</div>
+      <div class="card-note">Actual daily views, real API data — TikTok not yet available</div>
     </div>
     <div class="legend" id="trendLegend"></div>
     <div class="chart-scroll">
-      <svg class="chart-svg" id="trendChart" role="img" aria-label="Cumulative views over time by platform"></svg>
+      <svg class="chart-svg" id="trendChart" role="img" aria-label="Daily views over time by platform"></svg>
     </div>
   </section>
 
@@ -1066,10 +1066,15 @@
   }
 
   /* ===================== render: legend ===================== */
+  // "Reach over time" only ever plots platforms with a real daily-API
+  // signal - TikTok has none yet (see fetchInstagramDailyViews and friends
+  // in src/dailyViews.js), so it's excluded from the chart and its legend.
+  var TREND_PLATFORMS = PLATFORMS.filter(function (p) { return p.key !== "tt"; });
+
   function renderLegend() {
     var wrap = document.getElementById("trendLegend");
     wrap.textContent = "";
-    PLATFORMS.forEach(function (p) {
+    TREND_PLATFORMS.forEach(function (p) {
       var item = document.createElement("span");
       item.className = "legend-item";
       item.appendChild(platformIcon(p.key));
@@ -1091,36 +1096,66 @@
     return getComputedStyle(document.body).getPropertyValue(name.replace("var(", "").replace(")", "")).trim();
   }
 
+  // The chosen range's bounds if set, otherwise the full span DAILY_VIEWS
+  // actually has data for (there's no post-date fallback anymore - this
+  // chart only ever plots real per-day API data).
+  function dailyDomain(start, end) {
+    if (start && end) return { start: start, end: end };
+    var allDates = [];
+    TREND_PLATFORMS.forEach(function (p) {
+      var series = DAILY_VIEWS[p.key] || {};
+      Object.keys(series).forEach(function (d) { allDates.push(d); });
+    });
+    if (!allDates.length) return null;
+    allDates.sort();
+    return { start: start || allDates[0], end: end || allDates[allDates.length - 1] };
+  }
+
+  function dayRange(startKey, endKey) {
+    var days = [];
+    var cursor = new Date(startKey + "T00:00:00Z");
+    var end = new Date(endKey + "T00:00:00Z");
+    while (cursor <= end) {
+      days.push(cursor.toISOString().slice(0, 10));
+      cursor = new Date(cursor.getTime() + 86400000);
+    }
+    return days;
+  }
+
   function renderTrend() {
-    var rows = filteredData().slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     var svg = document.getElementById("trendChart");
     svg.textContent = "";
-    if (rows.length === 0) return;
+
+    var domain = dailyDomain(rangeStartDate(), rangeEndDate());
+    var days = domain ? dayRange(domain.start, domain.end) : [];
 
     var W = Math.max(svg.clientWidth || 900, 600);
     var H = 260;
     var padL = 46, padR = 16, padT = 14, padB = 28;
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
 
-    // cumulative sums per platform
+    if (days.length === 0) {
+      var msg = el("text", { x: W / 2, y: H / 2, class: "axislabel", "text-anchor": "middle" });
+      msg.textContent = "No real daily view data available for this range yet.";
+      svg.appendChild(msg);
+      return;
+    }
+
+    // Actual per-day views (not cumulative) for the days in range - real
+    // API data only, no per-video/post-date fallback estimate.
     var series = {};
-    PLATFORMS.forEach(function (p) { series[p.key] = []; });
-    var running = { yt: 0, fb: 0, ig: 0, tt: 0 };
-    rows.forEach(function (r) {
-      running.yt += r.yt || 0; running.fb += r.fb || 0; running.ig += r.ig || 0; running.tt += r.tt || 0;
-      PLATFORMS.forEach(function (p) { series[p.key].push(running[p.key]); });
+    TREND_PLATFORMS.forEach(function (p) {
+      var source = DAILY_VIEWS[p.key] || {};
+      series[p.key] = days.map(function (d) { return source[d] || 0; });
     });
 
-    var t0 = new Date(rows[0].date + "T00:00:00").getTime();
-    var t1 = new Date(rows[rows.length - 1].date + "T00:00:00").getTime();
-    if (t1 === t0) t1 = t0 + 86400000;
-    var yMax = Math.max.apply(null, PLATFORMS.map(function (p) { return series[p.key][series[p.key].length - 1]; }));
+    var yMax = 0;
+    TREND_PLATFORMS.forEach(function (p) {
+      series[p.key].forEach(function (v) { if (v > yMax) yMax = v; });
+    });
     yMax = yMax <= 0 ? 1 : yMax * 1.08;
 
-    function x(i) {
-      var t = new Date(rows[i].date + "T00:00:00").getTime();
-      return padL + ((t - t0) / (t1 - t0)) * (W - padL - padR);
-    }
+    function x(i) { return days.length === 1 ? padL : padL + (i / (days.length - 1)) * (W - padL - padR); }
     function y(v) { return H - padB - (v / yMax) * (H - padT - padB); }
 
     // gridlines + y labels (4 steps)
@@ -1134,28 +1169,28 @@
       svg.appendChild(lab);
     }
     // x labels: first, mid, last
-    [0, Math.floor(rows.length / 2), rows.length - 1].forEach(function (i) {
+    [0, Math.floor((days.length - 1) / 2), days.length - 1].forEach(function (i) {
       var lx = x(i);
-      var lab = el("text", { x: lx, y: H - 8, class: "axislabel", "text-anchor": i === 0 ? "start" : (i === rows.length - 1 ? "end" : "middle") });
-      lab.textContent = fmtDateShort(rows[i].date);
+      var lab = el("text", { x: lx, y: H - 8, class: "axislabel", "text-anchor": i === 0 ? "start" : (i === days.length - 1 ? "end" : "middle") });
+      lab.textContent = fmtDateShort(days[i]);
       svg.appendChild(lab);
     });
 
     // lines
-    PLATFORMS.forEach(function (p) {
+    TREND_PLATFORMS.forEach(function (p) {
       var d = "";
-      for (var i = 0; i < rows.length; i++) {
+      for (var i = 0; i < days.length; i++) {
         d += (i === 0 ? "M" : "L") + x(i).toFixed(1) + "," + y(series[p.key][i]).toFixed(1) + " ";
       }
       svg.appendChild(el("path", { d: d, class: "trendline", stroke: p.color }));
-      var lastVal = series[p.key][rows.length - 1];
-      svg.appendChild(el("circle", { cx: x(rows.length - 1), cy: y(lastVal), r: 4, fill: p.color, class: "enddot" }));
+      var lastVal = series[p.key][days.length - 1];
+      svg.appendChild(el("circle", { cx: x(days.length - 1), cy: y(lastVal), r: 4, fill: p.color, class: "enddot" }));
     });
 
     // crosshair + hit layer
     var crosshair = el("line", { x1: 0, x2: 0, y1: padT, y2: H - padB, class: "crosshair", style: "opacity:0" });
     svg.appendChild(crosshair);
-    var dots = PLATFORMS.map(function (p) { return el("circle", { r: 4, fill: p.color, class: "enddot", style: "opacity:0" }); });
+    var dots = TREND_PLATFORMS.map(function (p) { return el("circle", { r: 4, fill: p.color, class: "enddot", style: "opacity:0" }); });
     dots.forEach(function (d) { svg.appendChild(d); });
 
     var tooltip = document.getElementById("tooltip");
@@ -1164,19 +1199,19 @@
 
     function nearestIndex(px) {
       var best = 0, bestD = Infinity;
-      for (var i = 0; i < rows.length; i++) {
+      for (var i = 0; i < days.length; i++) {
         var d = Math.abs(x(i) - px);
         if (d < bestD) { bestD = d; best = i; }
       }
       return best;
     }
 
-    function showAt(i, clientX, clientY) {
+    function showAt(i) {
       var cx = x(i);
       crosshair.setAttribute("x1", cx); crosshair.setAttribute("x2", cx);
       crosshair.style.opacity = 1;
       dots.forEach(function (dot, idx) {
-        var key = PLATFORMS[idx].key;
+        var key = TREND_PLATFORMS[idx].key;
         dot.setAttribute("cx", cx);
         dot.setAttribute("cy", y(series[key][i]));
         dot.style.opacity = 1;
@@ -1184,9 +1219,9 @@
       tooltip.textContent = "";
       var dateEl = document.createElement("div");
       dateEl.className = "tooltip-date";
-      dateEl.textContent = fmtDate(rows[i].date);
+      dateEl.textContent = fmtDate(days[i]);
       tooltip.appendChild(dateEl);
-      PLATFORMS.forEach(function (p) {
+      TREND_PLATFORMS.forEach(function (p) {
         var row = document.createElement("div");
         row.className = "tooltip-row";
         var key = document.createElement("span");
@@ -1205,7 +1240,7 @@
       });
       var rect = svg.getBoundingClientRect();
       tooltip.style.left = (rect.left + cx) + "px";
-      tooltip.style.top = (rect.top + y(Math.max.apply(null, PLATFORMS.map(function (p) { return series[p.key][i]; }))) - 12) + "px";
+      tooltip.style.top = (rect.top + y(Math.max.apply(null, TREND_PLATFORMS.map(function (p) { return series[p.key][i]; }))) - 12) + "px";
       tooltip.classList.add("show");
     }
     function hideTip() {
@@ -1218,10 +1253,10 @@
       var rect = svg.getBoundingClientRect();
       var scaleX = W / rect.width;
       var px = (e.clientX - rect.left) * scaleX;
-      showAt(nearestIndex(px), e.clientX, e.clientY);
+      showAt(nearestIndex(px));
     });
     hit.addEventListener("pointerleave", hideTip);
-    hit.addEventListener("focus", function () { showAt(rows.length - 1); });
+    hit.addEventListener("focus", function () { showAt(days.length - 1); });
     hit.setAttribute("tabindex", "0");
     hit.addEventListener("blur", hideTip);
   }
