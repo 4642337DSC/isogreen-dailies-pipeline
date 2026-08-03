@@ -96,6 +96,31 @@ export async function syncInstagramMonthly(cfg, oldestDate) {
   return monthly;
 }
 
+// Real per-day Instagram views, shape { "YYYY-MM-DD": views } - for
+// src/dailyViews.js's Daily Views database. Unlike Facebook/YouTube,
+// Instagram's "views" metric has no day-level time series mode at all (see
+// the comment on syncInstagramMonthly above) - the only way to get a real
+// number for a single day is to request that exact 1-day window in
+// total_value mode. So this costs one API call per day requested, not one
+// per month like the other platforms; callers should bound the range
+// accordingly for anything run on a daily schedule (see dailyViews.js).
+export async function fetchInstagramDailyViews(cfg, start, end) {
+  var igUserId = await resolveInstagramUserId(cfg);
+  var daily = {};
+  var now = new Date();
+  var effectiveEnd = end > now ? now : end;
+  var dayStart = new Date(start);
+
+  while (dayStart < effectiveEnd) {
+    var dayEnd = new Date(Math.min(dayStart.getTime() + 24 * 60 * 60 * 1000, effectiveEnd.getTime()));
+    var total = await fetchInstagramViewsTotalForRange(cfg, igUserId, dayStart, dayEnd);
+    if (total !== null) daily[dayStart.toISOString().slice(0, 10)] = total;
+    dayStart = dayEnd;
+  }
+
+  return daily;
+}
+
 // Sums metric_type=total_value "views" over [start, end) by splitting into
 // <=30-day sub-windows - Meta's hard cap for this metric+mode.
 export async function fetchInstagramViewsTotalForRange(cfg, igUserId, start, end) {

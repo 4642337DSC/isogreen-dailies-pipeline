@@ -21,28 +21,19 @@ export async function getYouTubeAccessToken(cfg) {
   return data.access_token;
 }
 
-// Channel-level "views" by calendar month, since oldestDate's month through
-// the current (partial) one - same shape as syncInstagramMonthly/
-// syncFacebookMonthly so it drops straight into writeMonthlyViews.
-//
-// dimensions=month turned out to be unusable: the Analytics API insists both
-// startDate/endDate "align" to a month boundary, but a month's last day AND
-// a bare first-of-month endDate both got rejected or silently truncated the
-// range - the latter meant the current in-progress month never got queried
-// at all, so it always came back with no row for "this month" even once new
-// views existed. Pulling day-level data and bucketing it into months
-// ourselves (same approach as syncFacebookMonthly's period=day) sidesteps
-// the whole alignment quirk and naturally includes today's partial month.
+// Channel-level "views" by exact calendar day, [start, end] inclusive -
+// shape { "YYYY-MM-DD": views }. Used by both syncYouTubeMonthly (buckets
+// this into months for the Monthly Views database, full history every run)
+// and src/dailyViews.js (writes it as-is to the Daily Views database, a
+// bounded recent window every run) - each calls this with its own range,
+// which is fine since the API call itself is cheap regardless of span.
 //
 // Note: YouTube Analytics has its own ~2-3 day processing lag (confirmed by
 // requesting through "today" and getting no rows for the last few days) -
-// unlike Meta's Graph API, which is close to real-time. So the current
-// month's row may legitimately not exist yet for the first few days of a
-// new month; it appears on its own once YouTube finishes processing.
-export async function syncYouTubeMonthly(cfg, oldestDate) {
+// unlike Meta's Graph API, which is close to real-time. So the last couple
+// of days may legitimately be missing; they appear once YouTube catches up.
+export async function fetchYouTubeDailyViews(cfg, start, end) {
   var accessToken = await getYouTubeAccessToken(cfg);
-  var start = new Date(Date.UTC(oldestDate.getUTCFullYear(), oldestDate.getUTCMonth(), 1));
-  var end = new Date();
 
   var url = 'https://youtubeanalytics.googleapis.com/v2/reports?' + new URLSearchParams({
     ids: 'channel==MINE',
@@ -56,10 +47,30 @@ export async function syncYouTubeMonthly(cfg, oldestDate) {
   var data = await fetchJson(url, { headers: { Authorization: 'Bearer ' + accessToken } });
   if (data.error) throw new Error('YouTube Analytics fetch failed: ' + JSON.stringify(data.error));
 
+  var daily = {};
+  (data.rows || []).forEach(function (row) { daily[String(row[0])] = row[1]; });
+  return daily;
+}
+
+// Buckets fetchYouTubeDailyViews into calendar months, since oldestDate's
+// month through the current (partial) one - same shape as
+// syncInstagramMonthly/syncFacebookMonthly so it drops straight into
+// writeMonthlyViews.
+//
+// dimensions=month itself turned out to be unusable: the Analytics API
+// insists both startDate/endDate "align" to a month boundary, but a month's
+// last day AND a bare first-of-month endDate both got rejected or silently
+// truncated the range - the latter meant the current in-progress month
+// never got queried at all. Bucketing day-level data ourselves sidesteps
+// the whole alignment quirk and naturally includes today's partial month.
+export async function syncYouTubeMonthly(cfg, oldestDate) {
+  var start = new Date(Date.UTC(oldestDate.getUTCFullYear(), oldestDate.getUTCMonth(), 1));
+  var daily = await fetchYouTubeDailyViews(cfg, start, new Date());
+
   var monthly = {};
-  (data.rows || []).forEach(function (row) {
-    var monthKey = String(row[0]).slice(0, 7); // "YYYY-MM-DD" -> "YYYY-MM"
-    monthly[monthKey] = (monthly[monthKey] || 0) + row[1];
+  Object.keys(daily).forEach(function (dateKey) {
+    var monthKey = dateKey.slice(0, 7); // "YYYY-MM-DD" -> "YYYY-MM"
+    monthly[monthKey] = (monthly[monthKey] || 0) + daily[dateKey];
   });
   return monthly;
 }

@@ -8,7 +8,9 @@
     "sync": "node src/sync.js",
     "backfill:thumbnails": "node scripts/backfill-thumbnails.js",
     "backfill:monthly-views": "node scripts/backfill-monthly-views.js",
-    "backfill:tiktok-monthly": "node scripts/backfill-tiktok-monthly.js"
+    "backfill:tiktok-monthly": "node scripts/backfill-tiktok-monthly.js",
+    "backfill:create-daily-views-db": "node scripts/backfill-create-daily-views-db.js",
+    "backfill:daily-views": "node scripts/backfill-daily-views.js"
   },
   "dependencies": {},
   "engines": {

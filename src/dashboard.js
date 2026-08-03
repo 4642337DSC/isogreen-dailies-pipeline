@@ -95,6 +95,28 @@ export async function fetchDashboardMonthlyViews(cfg) {
   return monthly;
 }
 
+export async function fetchDashboardDailyViews(cfg) {
+  var daily = { yt: {}, fb: {}, ig: {} };
+  if (!cfg.DAILY_VIEWS_DATABASE_ID) return daily;
+  var cursor = null;
+  do {
+    var payload = { page_size: 100 };
+    if (cursor) payload.start_cursor = cursor;
+    var data = await queryNotionDatabase(cfg, cfg.DAILY_VIEWS_DATABASE_ID, payload);
+    if (data.object === 'error') throw new Error('Daily Views query failed: ' + data.message);
+    (data.results || []).forEach(function (page) {
+      var props = page.properties;
+      var key = platformKey(props['Platform'] && props['Platform'].select ? props['Platform'].select.name : null);
+      var dateStart = props['Date'] && props['Date'].date ? props['Date'].date.start : null;
+      var views = props['Views'] ? props['Views'].number : null;
+      if (!key || !daily[key] || !dateStart || typeof views !== 'number') return;
+      daily[key][dateStart.slice(0, 10)] = views;
+    });
+    cursor = data.has_more ? data.next_cursor : null;
+  } while (cursor);
+  return daily;
+}
+
 // Builds the dashboard from templates/DashboardTemplate.html (a
 // self-contained page - CSS + markup + client-side JS - with a handful of
 // token placeholders) and writes the merged result straight to
@@ -106,6 +128,7 @@ export async function buildDashboard(cfg, thumbMap, outDir) {
   var rows = await fetchDashboardRows(cfg, thumbMap);
   var audience = await fetchDashboardAudience(cfg);
   var monthly = await fetchDashboardMonthlyViews(cfg);
+  var daily = await fetchDashboardDailyViews(cfg);
 
   var templatePath = new URL('../templates/DashboardTemplate.html', import.meta.url);
   var html = await fs.readFile(templatePath, 'utf8');
@@ -113,6 +136,7 @@ export async function buildDashboard(cfg, thumbMap, outDir) {
     .replace('/*__RAW_DATA__*/', JSON.stringify(rows))
     .replace('/*__AUDIENCE_DATA__*/', JSON.stringify(audience))
     .replace('/*__MONTHLY_VIEWS_DATA__*/', JSON.stringify(monthly))
+    .replace('/*__DAILY_VIEWS_DATA__*/', JSON.stringify(daily))
     .replace('__LAST_SYNCED__', isoDate(new Date()))
     .split('__CLIENT_NAME__').join('Isogreen România');
 

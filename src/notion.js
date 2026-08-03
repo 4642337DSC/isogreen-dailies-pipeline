@@ -122,6 +122,44 @@ export async function findMonthlyViewsRow(cfg, platform, monthStart) {
   return data.results[0].id;
 }
 
+// Day-grained sibling of writeMonthlyViews/findMonthlyViewsRow, writing to
+// DAILY_VIEWS_DATABASE_ID instead - powers the dashboard's custom date-range
+// "Total views" KPI with real per-day numbers instead of a post-date-filtered
+// lifetime-total estimate. See src/dailyViews.js.
+export async function writeDailyViews(cfg, platform, source, dailyMap) {
+  for (var dateKey of Object.keys(dailyMap)) {
+    var views = dailyMap[dateKey];
+    var existingId = await findDailyViewsRow(cfg, platform, dateKey);
+    var props = {
+      'Label': { title: [{ text: { content: platform + ' · ' + dateKey } }] },
+      'Platform': { select: { name: platform } },
+      'Date': { date: { start: dateKey } },
+      'Views': { number: views },
+      'Source': { select: { name: source } },
+      'Synced At': { date: { start: new Date().toISOString() } }
+    };
+    if (existingId) {
+      await updateNotionPage(cfg, existingId, props);
+    } else {
+      await createNotionPage(cfg, cfg.DAILY_VIEWS_DATABASE_ID, props);
+    }
+  }
+}
+
+export async function findDailyViewsRow(cfg, platform, dateKey) {
+  var data = await queryNotionDatabase(cfg, cfg.DAILY_VIEWS_DATABASE_ID, {
+    filter: {
+      and: [
+        { property: 'Platform', select: { equals: platform } },
+        { property: 'Date', date: { equals: dateKey } }
+      ]
+    },
+    page_size: 1
+  });
+  if (data.object === 'error' || !data.results || !data.results.length) return null;
+  return data.results[0].id;
+}
+
 // ===== Matching (shared across platforms) =====
 // Primary key: "Data Postare" vs the post's publish date (same calendar day
 // in SYNC_TIMEZONE, with a +-1 day fallback). Among same-day candidates, the

@@ -805,6 +805,15 @@
   // posted that month. Shape: { yt: {"2026-07": 12345, ...}, fb: {...}, ig: {...}, tt: {...} }.
   var MONTHLY_VIEWS = /*__MONTHLY_VIEWS_DATA__*/;
 
+  // Same real-API sourcing as MONTHLY_VIEWS, but per exact calendar day -
+  // see src/dailyViews.js. Powers the "Total views" KPI tile for a custom
+  // date range with an exact number instead of a post-date-filtered
+  // lifetime-total estimate. No "tt" key - TikTok has no API for this at
+  // all. Coverage may be partial (a bounded recent window plus whatever a
+  // one-time backfill has filled in) - callers must treat a day missing
+  // from this map as "no real data," not "zero views."
+  var DAILY_VIEWS = /*__DAILY_VIEWS_DATA__*/;
+
   var PLATFORMS = [
     { key: "yt", label: "YouTube",   color: "var(--p-yt)" },
     { key: "tt", label: "TikTok",    color: "var(--p-tt)" },
@@ -917,6 +926,20 @@
     return DATA.filter(function (r) { return (!start || r.date >= start) && (!end || r.date <= end); });
   }
 
+  // Sums DAILY_VIEWS[key] over [start, end] (inclusive, either bound
+  // optional) - returns null (not 0) when there's no real data covering any
+  // day in that range, so callers can tell "genuinely zero views" apart
+  // from "we don't have real data for this, fall back to the estimate."
+  function sumDailyViews(key, start, end) {
+    var series = DAILY_VIEWS[key];
+    if (!series) return null;
+    var sum = 0, any = false;
+    Object.keys(series).forEach(function (d) {
+      if ((!start || d >= start) && (!end || d <= end)) { sum += series[d]; any = true; }
+    });
+    return any ? sum : null;
+  }
+
   /* ===================== render: masthead ===================== */
   document.getElementById("asOfLine").textContent = "as of " + fmtDate(LAST_SYNCED);
   document.getElementById("countLine").textContent = DATA.length.toLocaleString("en-US") + " shorts tracked";
@@ -953,11 +976,31 @@
   /* ===================== render: KPIs ===================== */
   function renderKPIs() {
     var rows = filteredData();
-    var sums = { total: 0, yt: 0, fb: 0, ig: 0, tt: 0 };
+
+    // Fallback: lifetime per-video totals for videos posted in range (what
+    // this always used to be). Used whenever real daily data doesn't cover
+    // the selected range for a platform - e.g. before the Daily Views
+    // backfill's earliest day, or a platform with no daily API (TikTok,
+    // always).
+    var fallbackSums = { yt: 0, fb: 0, ig: 0, tt: 0 };
     rows.forEach(function (r) {
-      sums.yt += r.yt || 0; sums.fb += r.fb || 0; sums.ig += r.ig || 0; sums.tt += r.tt || 0;
+      fallbackSums.yt += r.yt || 0; fallbackSums.fb += r.fb || 0; fallbackSums.ig += r.ig || 0; fallbackSums.tt += r.tt || 0;
+    });
+
+    // Real: each platform's own Analytics/Insights API, summed for the
+    // exact selected range - actual views that happened in that window,
+    // not lifetime totals of whatever was posted in it. Preferred whenever
+    // available.
+    var start = rangeStartDate(), end = rangeEndDate();
+    var isReal = { yt: false, fb: false, ig: false };
+    var sums = { tt: fallbackSums.tt };
+    ["yt", "fb", "ig"].forEach(function (key) {
+      var real = sumDailyViews(key, start, end);
+      if (real !== null) { sums[key] = real; isReal[key] = true; }
+      else { sums[key] = fallbackSums[key]; }
     });
     sums.total = sums.yt + sums.fb + sums.ig + sums.tt;
+    var totalIsReal = isReal.yt && isReal.fb && isReal.ig;
 
     var counts = {
       yt: rows.filter(function (r) { return r.yt !== null; }).length,
@@ -996,11 +1039,11 @@
       grid.appendChild(el);
     }
 
-    tile("Total views", null, sums.total, rows.length.toLocaleString("en-US") + " shorts in range");
-    tile("YouTube", "yt", sums.yt, counts.yt + " tracked");
+    tile("Total views", null, sums.total, rows.length.toLocaleString("en-US") + " shorts in range" + (totalIsReal ? "" : " (est.)"));
+    tile("YouTube", "yt", sums.yt, counts.yt + " tracked" + (isReal.yt ? "" : " (est.)"));
     tile("TikTok", "tt", sums.tt, counts.tt + " tracked");
-    tile("Instagram", "ig", sums.ig, counts.ig + " tracked");
-    tile("Facebook", "fb", sums.fb, counts.fb + " tracked");
+    tile("Instagram", "ig", sums.ig, counts.ig + " tracked" + (isReal.ig ? "" : " (est.)"));
+    tile("Facebook", "fb", sums.fb, counts.fb + " tracked" + (isReal.fb ? "" : " (est.)"));
   }
 
   /* ===================== render: legend ===================== */

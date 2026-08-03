@@ -8,6 +8,7 @@ import { syncInstagram } from './instagram.js';
 import { syncTikTok } from './tiktok.js';
 import { syncAudience } from './audience.js';
 import { syncMonthlyViews } from './monthlyViews.js';
+import { syncDailyViews } from './dailyViews.js';
 import { syncThumbnails } from './thumbnails.js';
 import { buildDashboard, buildClientsIndex } from './dashboard.js';
 import { writeSyncSummary } from './summary.js';
@@ -50,10 +51,15 @@ export async function syncAllViews() {
   var thumbMap = {};
   try { thumbMap = await syncThumbnails(rows, path.join(DIST_DIR, 'thumbs')); } catch (e) { console.log('Thumbnail sync failed: ' + e); }
 
+  var oldestDate = oldestPostDate(rows);
+
   try {
-    var oldestDate = oldestPostDate(rows);
     await syncMonthlyViews(cfg, { fbEnabled: fbEnabled, ytEnabled: ytEnabled, oldestDate: oldestDate });
   } catch (e) { console.log('Monthly views sync failed: ' + e); }
+
+  try {
+    await syncDailyViews(cfg, { fbEnabled: fbEnabled, ytEnabled: ytEnabled });
+  } catch (e) { console.log('Daily views sync failed: ' + e); }
 
   try {
     await buildDashboard(cfg, thumbMap, DIST_DIR);

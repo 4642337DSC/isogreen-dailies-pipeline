@@ -45,20 +45,20 @@ export async function syncFacebook(cfg, rows) {
 }
 
 // --- Facebook: Page-level "page_video_views" time-series insight ---
-// Same chunking/bucketing approach as Instagram. Covers all Page video
-// content (Reels included, but not Reels-exclusive - Meta has no
-// Reels-only equivalent at the Page level).
-export async function syncFacebookMonthly(cfg, oldestDate) {
-  var monthly = {};
-
-  var end = new Date();
+// Covers all Page video content (Reels included, but not Reels-exclusive -
+// Meta has no Reels-only equivalent at the Page level). Chunked into
+// <=30-day windows since Meta caps since/until at that span; returns exact
+// per-day values (shape { "YYYY-MM-DD": views }), used both to bucket into
+// months (syncFacebookMonthly, for the Monthly Views database) and as-is by
+// src/dailyViews.js (for the Daily Views database).
+export async function fetchFacebookDailyViews(cfg, start, end) {
+  var daily = {};
   var chunkEnd = new Date(end);
-  var oldestNeeded = new Date(Date.UTC(oldestDate.getUTCFullYear(), oldestDate.getUTCMonth(), 1));
 
-  while (chunkEnd > oldestNeeded) {
+  while (chunkEnd > start) {
     var chunkStart = new Date(chunkEnd);
     chunkStart.setDate(chunkStart.getDate() - 30);
-    if (chunkStart < oldestNeeded) chunkStart = new Date(oldestNeeded);
+    if (chunkStart < start) chunkStart = new Date(start);
 
     var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + cfg.FB_PAGE_ID +
       '/insights/page_video_views?period=day' +
@@ -66,17 +66,29 @@ export async function syncFacebookMonthly(cfg, oldestDate) {
       '&until=' + Math.floor(chunkEnd.getTime() / 1000) +
       '&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
     var data = await fetchJson(url);
-    if (data.error) throw new Error('Facebook monthly insights fetch failed: ' + JSON.stringify(data.error));
+    if (data.error) throw new Error('Facebook daily insights fetch failed: ' + JSON.stringify(data.error));
 
     var series = (data.data && data.data.length) ? (data.data[0].values || []) : [];
     series.forEach(function (point) {
       if (typeof point.value !== 'number' || !point.end_time) return;
-      var monthKey = dateKeyInTz(point.end_time).slice(0, 7);
-      monthly[monthKey] = (monthly[monthKey] || 0) + point.value;
+      var dateKey = dateKeyInTz(point.end_time);
+      daily[dateKey] = (daily[dateKey] || 0) + point.value;
     });
 
     chunkEnd = new Date(chunkStart.getTime() - 1000);
   }
 
+  return daily;
+}
+
+export async function syncFacebookMonthly(cfg, oldestDate) {
+  var oldestNeeded = new Date(Date.UTC(oldestDate.getUTCFullYear(), oldestDate.getUTCMonth(), 1));
+  var daily = await fetchFacebookDailyViews(cfg, oldestNeeded, new Date());
+
+  var monthly = {};
+  Object.keys(daily).forEach(function (dateKey) {
+    var monthKey = dateKey.slice(0, 7);
+    monthly[monthKey] = (monthly[monthKey] || 0) + daily[dateKey];
+  });
   return monthly;
 }

@@ -11,6 +11,8 @@ on:
           - thumbnails
           - monthly-views
           - tiktok-monthly
+          - create-daily-views-db
+          - daily-views
 
 jobs:
   backfill:
@@ -36,6 +38,7 @@ jobs:
           ZERNIO_TIKTOK_ACCOUNT_ID: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID }}
           CHANNEL_STATS_DATABASE_ID: ${{ secrets.CHANNEL_STATS_DATABASE_ID }}
           MONTHLY_VIEWS_DATABASE_ID: ${{ secrets.MONTHLY_VIEWS_DATABASE_ID }}
+          DAILY_VIEWS_DATABASE_ID: ${{ secrets.DAILY_VIEWS_DATABASE_ID }}
           YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
           YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
