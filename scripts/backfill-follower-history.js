@@ -3,7 +3,7 @@ import { fetchNotionRows, writeFollowerSnapshots } from '../src/notion.js';
 import { fetchJson } from '../src/http.js';
 import { fetchYouTubeDailyFollowers } from '../src/youtubeAnalytics.js';
 import { fetchFacebookDailyFollowers } from '../src/facebook.js';
-import { fetchInstagramDailyFollowers } from '../src/instagram.js';
+import { fetchInstagramDailyFollowers, fetchInstagramCurrentFollowers } from '../src/instagram.js';
 
 // One-time full-history backfill for the Follower Snapshots database.
 // Unlike view counts, none of these platforms expose a direct "follower
@@ -12,10 +12,12 @@ import { fetchInstagramDailyFollowers } from '../src/instagram.js';
 //   - YouTube: no count-over-time metric, but subscribersGained/
 //     subscribersLost day-level deltas are retained - reconstructed
 //     backwards from today's real count (fetchYouTubeDailyFollowers).
-//   - Facebook: page_fans is a real period=day time series (same
-//     end_time-boundary handling as page_video_views).
-//   - Instagram: follower_count is also a real period=day time series
-//     (unlike "views", which only supports the total_value workaround).
+//   - Facebook: page_follows is a real absolute-snapshot period=day time
+//     series (same day-boundary handling as page_video_views).
+//   - Instagram: follower_count IS a real period=day time series (unlike
+//     "views", which only supports the total_value workaround) but despite
+//     the name it's a daily DELTA, not an absolute snapshot - reconstructed
+//     backwards the same way as YouTube.
 //   - TikTok: Zernio (the only integration this pipeline has) exposes just
 //     the current follower count, no history - not backfilled here. Daily
 //     capture still continues going forward via the regular sync
@@ -62,8 +64,10 @@ if (fbEnabled) {
   console.log('Writing ' + Object.keys(fbDaily).length + ' Facebook day(s)...');
   await writeFollowerSnapshots(cfg, 'Facebook', fbDaily);
 
-  console.log('Fetching Instagram daily follower history...');
-  var igDaily = await fetchInstagramDailyFollowers(cfg, start, end);
+  console.log('Fetching current Instagram follower count...');
+  var currentIgFollowers = await fetchInstagramCurrentFollowers(cfg);
+  console.log('Reconstructing Instagram daily follower history from ' + currentIgFollowers + ' current followers...');
+  var igDaily = await fetchInstagramDailyFollowers(cfg, start, end, currentIgFollowers);
   console.log('Writing ' + Object.keys(igDaily).length + ' Instagram day(s)...');
   await writeFollowerSnapshots(cfg, 'Instagram', igDaily);
 } else {

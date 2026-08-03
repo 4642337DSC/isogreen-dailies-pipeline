@@ -126,20 +126,38 @@ export async function fetchInstagramDailyViews(cfg, start, end) {
   return daily;
 }
 
-// --- Instagram: account-level "follower_count" time-series insight ---
-// Unlike "views", follower_count supports a real plain period=day time
-// series (no total_value workaround needed) - one call per <=30-day chunk.
-// Each point's calendar day is derived from its POSITION in the series
-// (chunkStart + i days), not from Meta's own end_time field - see
-// fetchFacebookDayMetric's comment in facebook.js for why trusting
-// end_time (even with a boundary offset correction) turned out to
-// mislabel data by a full day. Used by scripts/backfill-follower-history.js.
-// Errors are logged and skipped per chunk rather than thrown, in case some
-// part of the history falls outside whatever retention window this metric
-// turns out to have.
-export async function fetchInstagramDailyFollowers(cfg, start, end) {
+// Current absolute follower count, for anchoring fetchInstagramDailyFollowers'
+// delta reconstruction below.
+export async function fetchInstagramCurrentFollowers(cfg) {
   var igUserId = await resolveInstagramUserId(cfg);
-  var daily = {};
+  var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + igUserId +
+    '?fields=followers_count&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
+  var data = await fetchJson(url);
+  if (data.error) throw new Error('Could not fetch current Instagram followers: ' + JSON.stringify(data.error));
+  return data.followers_count;
+}
+
+// --- Instagram: account-level "follower_count" time-series insight ---
+// Despite the name, this is NOT an absolute snapshot - it's the net change
+// in followers *during* that day (confirmed empirically: treating it as a
+// snapshot produced a history that was 0 on nearly every day, since a small
+// account's day-to-day follower delta is usually 0 or a tiny number, not
+// remotely close to the real total). Reconstructed the same way as
+// fetchYouTubeDailyFollowers: collect each day's delta, then walk backwards
+// from currentCount (today's real total, fetched by the caller via
+// fetchInstagramCurrentFollowers).
+//
+// One call per <=30-day chunk. Each point's calendar day is derived from
+// its POSITION in the series (chunkStart + i days), not from Meta's own
+// end_time field - see fetchFacebookDayMetric's comment in facebook.js for
+// why trusting end_time (even with a boundary offset correction) turned
+// out to mislabel data by a full day. Used by
+// scripts/backfill-follower-history.js. Errors are logged and skipped per
+// chunk rather than thrown, in case some part of the history falls outside
+// whatever retention window this metric turns out to have.
+export async function fetchInstagramDailyFollowers(cfg, start, end, currentCount) {
+  var igUserId = await resolveInstagramUserId(cfg);
+  var deltaByDay = {};
   var MAX_CHUNK_MS = 30 * 24 * 60 * 60 * 1000;
   var chunkStart = new Date(start);
 
@@ -158,12 +176,19 @@ export async function fetchInstagramDailyFollowers(cfg, start, end) {
       series.forEach(function (point, i) {
         if (typeof point.value !== 'number') return;
         var dateKey = new Date(chunkStart.getTime() + i * 86400000).toISOString().slice(0, 10);
-        daily[dateKey] = point.value;
+        deltaByDay[dateKey] = point.value;
       });
     }
     chunkStart = chunkEnd;
   }
 
+  var days = Object.keys(deltaByDay).sort();
+  var daily = {};
+  var running = currentCount;
+  for (var i = days.length - 1; i >= 0; i--) {
+    daily[days[i]] = running;
+    running -= deltaByDay[days[i]];
+  }
   return daily;
 }
 
