@@ -55,5 +55,10 @@ export async function syncYouTubeMonthly(cfg, oldestDate) {
     var monthKey = String(row[0]).slice(0, 7); // "YYYY-MM-DD" -> "YYYY-MM"
     monthly[monthKey] = (monthly[monthKey] || 0) + row[1];
   });
+
+  console.log('YouTube monthly debug: requested ' + isoDate(start) + '..' + isoDate(end) +
+    ', got ' + (data.rows ? data.rows.length : 0) + ' day-rows, last 5: ' +
+    JSON.stringify((data.rows || []).slice(-5)) + ', monthly map: ' + JSON.stringify(monthly));
+
   return monthly;
 }
