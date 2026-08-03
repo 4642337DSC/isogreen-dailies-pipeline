@@ -33,6 +33,12 @@ export async function getYouTubeAccessToken(cfg) {
 // views existed. Pulling day-level data and bucketing it into months
 // ourselves (same approach as syncFacebookMonthly's period=day) sidesteps
 // the whole alignment quirk and naturally includes today's partial month.
+//
+// Note: YouTube Analytics has its own ~2-3 day processing lag (confirmed by
+// requesting through "today" and getting no rows for the last few days) -
+// unlike Meta's Graph API, which is close to real-time. So the current
+// month's row may legitimately not exist yet for the first few days of a
+// new month; it appears on its own once YouTube finishes processing.
 export async function syncYouTubeMonthly(cfg, oldestDate) {
   var accessToken = await getYouTubeAccessToken(cfg);
   var start = new Date(Date.UTC(oldestDate.getUTCFullYear(), oldestDate.getUTCMonth(), 1));
@@ -55,10 +61,5 @@ export async function syncYouTubeMonthly(cfg, oldestDate) {
     var monthKey = String(row[0]).slice(0, 7); // "YYYY-MM-DD" -> "YYYY-MM"
     monthly[monthKey] = (monthly[monthKey] || 0) + row[1];
   });
-
-  console.log('YouTube monthly debug: requested ' + isoDate(start) + '..' + isoDate(end) +
-    ', got ' + (data.rows ? data.rows.length : 0) + ' day-rows, last 5: ' +
-    JSON.stringify((data.rows || []).slice(-5)) + ', monthly map: ' + JSON.stringify(monthly));
-
   return monthly;
 }
