@@ -11,6 +11,7 @@ import { syncMonthlyViews } from './monthlyViews.js';
 import { syncDailyViews } from './dailyViews.js';
 import { syncThumbnails } from './thumbnails.js';
 import { buildDashboard, buildClientsIndex } from './dashboard.js';
+import { buildReportsApp } from './reports.js';
 import { writeSyncSummary } from './summary.js';
 
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -61,15 +62,21 @@ export async function syncAllViews() {
     await syncDailyViews(cfg, { fbEnabled: fbEnabled, ytEnabled: ytEnabled });
   } catch (e) { console.log('Daily views sync failed: ' + e); }
 
+  var dashboardData = null;
   try {
-    await buildDashboard(cfg, thumbMap, DIST_DIR);
+    dashboardData = await buildDashboard(cfg, thumbMap, DIST_DIR);
   } catch (e) { console.log('Dashboard build failed: ' + e); }
 
-  // Monthly reports are generated on demand (see scripts/generate-report.js
-  // + the "Generate report" GitHub Actions workflow), not automatically
-  // here - they're reviewed and edited by hand (TikTok figure, comments)
-  // before being printed, so rebuilding all of them on every sync would
-  // overwrite those edits and has no upside.
+  // The reports app is one lightweight page embedding every month's data
+  // plus a year/month picker - rendering happens entirely client-side when
+  // a month is selected, so rebuilding it here (like the dashboard itself)
+  // never overwrites anything a user is mid-edit on, since nothing is
+  // pre-rendered or persisted per month.
+  if (dashboardData) {
+    try {
+      await buildReportsApp(cfg, dashboardData, DIST_DIR);
+    } catch (e) { console.log('Reports app build failed: ' + e); }
+  }
 
   try {
     await buildClientsIndex(CLIENTS_DIR);
