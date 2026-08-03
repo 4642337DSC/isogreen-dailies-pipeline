@@ -29,13 +29,20 @@ export async function syncYouTubeMonthly(cfg, oldestDate) {
   var months = monthRangeSince(oldestDate);
   if (!months.length) return {};
 
+  // With dimensions=month the Analytics API insists both dates be
+  // month-aligned - endDate has to land on a month's last day, not just
+  // "today", even for the current in-progress month (it still returns
+  // whatever partial data exists so far).
+  var now = new Date();
+  var lastDayOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+
   var url = 'https://youtubeanalytics.googleapis.com/v2/reports?' + new URLSearchParams({
     ids: 'channel==MINE',
     metrics: 'views',
     dimensions: 'month',
     sort: 'month',
     startDate: isoDate(months[0].start),
-    endDate: isoDate(new Date())
+    endDate: lastDayOfMonth.toISOString().slice(0, 10)
   }).toString();
 
   var data = await fetchJson(url, { headers: { Authorization: 'Bearer ' + accessToken } });
