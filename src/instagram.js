@@ -1,7 +1,7 @@
 import { fetchJson } from './http.js';
 import { GRAPH_API_VERSION } from './config.js';
 import { matchContent, findById, buildPlatformReport } from './notion.js';
-import { monthRangeSince, isoDate } from './util.js';
+import { monthRangeSince, isoDate, dateKeyInTz } from './util.js';
 
 export async function resolveInstagramUserId(cfg) {
   var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + cfg.FB_PAGE_ID +
@@ -121,6 +121,45 @@ export async function fetchInstagramDailyViews(cfg, start, end) {
     var total = await fetchInstagramViewsTotalForRange(cfg, igUserId, dayStart, dayEnd);
     if (total !== null) daily[dayStart.toISOString().slice(0, 10)] = total;
     dayStart = dayEnd;
+  }
+
+  return daily;
+}
+
+// --- Instagram: account-level "follower_count" time-series insight ---
+// Unlike "views", follower_count supports a real plain period=day time
+// series (no total_value workaround needed) - one call per <=30-day chunk,
+// same end_time-boundary handling as Facebook's page_fans (see
+// fetchFacebookDayMetric's comment: end_time is the exclusive end of the
+// day, step back 1 second to land inside the actual day). Used by
+// scripts/backfill-follower-history.js. Errors are logged and skipped per
+// chunk rather than thrown, in case some part of the history falls outside
+// whatever retention window this metric turns out to have.
+export async function fetchInstagramDailyFollowers(cfg, start, end) {
+  var igUserId = await resolveInstagramUserId(cfg);
+  var daily = {};
+  var MAX_CHUNK_MS = 30 * 24 * 60 * 60 * 1000;
+  var chunkStart = new Date(start);
+
+  while (chunkStart < end) {
+    var chunkEnd = new Date(Math.min(chunkStart.getTime() + MAX_CHUNK_MS, end.getTime()));
+    var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + igUserId +
+      '/insights?metric=follower_count&period=day' +
+      '&since=' + Math.floor(chunkStart.getTime() / 1000) +
+      '&until=' + Math.floor(chunkEnd.getTime() / 1000) +
+      '&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
+    var data = await fetchJson(url);
+    if (data.error) {
+      console.log('Instagram follower_count fetch failed for ' + isoDate(chunkStart) + '..' + isoDate(chunkEnd) + ': ' + JSON.stringify(data.error));
+    } else {
+      var series = (data.data && data.data.length) ? (data.data[0].values || []) : [];
+      series.forEach(function (point) {
+        if (typeof point.value !== 'number' || !point.end_time) return;
+        var dateKey = dateKeyInTz(new Date(new Date(point.end_time).getTime() - 1000).toISOString());
+        daily[dateKey] = point.value;
+      });
+    }
+    chunkStart = chunkEnd;
   }
 
   return daily;

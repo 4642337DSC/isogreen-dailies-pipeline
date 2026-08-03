@@ -52,6 +52,40 @@ export async function fetchYouTubeDailyViews(cfg, start, end) {
   return daily;
 }
 
+// Full daily subscriber-count history, reconstructed rather than fetched
+// directly - the Analytics API has no "subscriber count over time" metric,
+// but does retain subscribersGained/subscribersLost day-level deltas back
+// through the channel's history. Anchored to currentCount (today's real
+// count, from the Data API's plain statistics.subscriberCount, fetched by
+// the caller) and walked backwards day by day.
+export async function fetchYouTubeDailyFollowers(cfg, start, end, currentCount) {
+  var accessToken = await getYouTubeAccessToken(cfg);
+
+  var url = 'https://youtubeanalytics.googleapis.com/v2/reports?' + new URLSearchParams({
+    ids: 'channel==MINE',
+    metrics: 'subscribersGained,subscribersLost',
+    dimensions: 'day',
+    sort: 'day',
+    startDate: isoDate(start),
+    endDate: isoDate(end)
+  }).toString();
+
+  var data = await fetchJson(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+  if (data.error) throw new Error('YouTube subscriber history fetch failed: ' + JSON.stringify(data.error));
+
+  var deltaByDay = {};
+  (data.rows || []).forEach(function (row) { deltaByDay[String(row[0])] = row[1] - row[2]; });
+
+  var days = Object.keys(deltaByDay).sort();
+  var daily = {};
+  var running = currentCount;
+  for (var i = days.length - 1; i >= 0; i--) {
+    daily[days[i]] = running;
+    running -= deltaByDay[days[i]];
+  }
+  return daily;
+}
+
 // Buckets fetchYouTubeDailyViews into calendar months, since oldestDate's
 // month through the current (partial) one - same shape as
 // syncInstagramMonthly/syncFacebookMonthly so it drops straight into

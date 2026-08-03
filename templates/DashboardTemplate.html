@@ -899,11 +899,12 @@
   // from this map as "no real data," not "zero views."
   var DAILY_VIEWS = /*__DAILY_VIEWS_DATA__*/;
 
-  // One immutable snapshot per platform per day - see src/audience.js. Has
-  // a "tt" key (unlike DAILY_VIEWS/MONTHLY_VIEWS) since follower counts are
-  // available for TikTok even though its view counts aren't. No backfill
-  // exists for this - coverage only starts from whenever the Follower
-  // Snapshots database was first created.
+  // One immutable snapshot per platform per day - see src/audience.js and
+  // scripts/backfill-follower-history.js. Has a "tt" key (unlike
+  // DAILY_VIEWS/MONTHLY_VIEWS) since follower counts are available for
+  // TikTok even though its view counts aren't - though TikTok has no
+  // historical follower API, so its coverage only starts from whenever
+  // daily tracking began, unlike YouTube/Facebook/Instagram's full history.
   var FOLLOWER_SNAPSHOTS = /*__FOLLOWER_SNAPSHOTS_DATA__*/;
 
   var PLATFORMS = [
@@ -1191,7 +1192,7 @@
     },
     followers: {
       platforms: PLATFORMS, source: FOLLOWER_SNAPSHOTS, cumulative: false, fillMode: "forward",
-      note: "Follower/subscriber counts over the selected period — coverage starts from whenever daily tracking began, no history before that"
+      note: "Follower/subscriber counts over the selected period — full history for YouTube/Facebook/Instagram; TikTok only from whenever daily tracking began (no historical API available)"
     }
   };
 

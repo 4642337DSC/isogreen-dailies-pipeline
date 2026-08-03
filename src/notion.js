@@ -160,10 +160,11 @@ export async function findDailyViewsRow(cfg, platform, dateKey) {
   return data.results[0].id;
 }
 
-// One immutable row per platform per day, into FOLLOWER_SNAPSHOTS_DATABASE_ID
-// - unlike view counts, no platform exposes a historical follower-count API,
-// so this can only ever be captured going forward from whenever tracking
-// starts (no backfill is possible). See src/audience.js.
+// One immutable row per platform per day, into FOLLOWER_SNAPSHOTS_DATABASE_ID.
+// The regular daily sync (src/audience.js) only ever writes today's single
+// snapshot via this function; the full historical backfill
+// (scripts/backfill-follower-history.js) uses the bulk writeFollowerSnapshots
+// below instead.
 export async function writeFollowerSnapshot(cfg, platform, dateKey, followers) {
   var existingId = await findFollowerSnapshotRow(cfg, platform, dateKey);
   var props = {
@@ -177,6 +178,15 @@ export async function writeFollowerSnapshot(cfg, platform, dateKey, followers) {
     await updateNotionPage(cfg, existingId, props);
   } else {
     await createNotionPage(cfg, cfg.FOLLOWER_SNAPSHOTS_DATABASE_ID, props);
+  }
+}
+
+// Bulk sibling of writeFollowerSnapshot, for backfilling a whole
+// { "YYYY-MM-DD": followers } map at once - see
+// scripts/backfill-follower-history.js.
+export async function writeFollowerSnapshots(cfg, platform, dailyMap) {
+  for (var dateKey of Object.keys(dailyMap)) {
+    await writeFollowerSnapshot(cfg, platform, dateKey, dailyMap[dateKey]);
   }
 }
 
