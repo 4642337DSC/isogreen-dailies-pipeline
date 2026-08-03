@@ -1,7 +1,6 @@
 import { fetchJson } from './http.js';
 import { GRAPH_API_VERSION } from './config.js';
 import { matchContent, findById, buildPlatformReport } from './notion.js';
-import { dateKeyInTz } from './util.js';
 
 // Isogreen's Shorts are posted as Facebook Reels, which live under /video_reels
 // (not the legacy /videos edge) and use the "blue_reels_play_count" metric
@@ -51,13 +50,16 @@ export async function syncFacebook(cfg, rows) {
 // case) get added together. mode "last": snapshot metrics (follower
 // counts) - a later value overwrites rather than adds.
 //
-// Meta's end_time for a period=day point is the EXCLUSIVE end boundary
-// (i.e. midnight starting the *next* day), not a timestamp inside the day
-// the point describes - using it directly mislabels every day's data as
-// the following day (most visible for "today," which was showing up as
-// tomorrow with a still-partial value, while every other platform
-// correctly had nothing for that not-yet-real date). Stepping back 1
-// second lands safely inside the actual day.
+// Each point's calendar day is derived from its POSITION in the series
+// (chunkStart + i days), not from Meta's own end_time field. A first
+// attempt trusted end_time (treating it as the exclusive end-of-day
+// boundary and stepping back 1 second) but that still mislabeled every
+// day's data as the following day - Meta's actual day-boundary convention
+// for this Page isn't reliably UTC midnight, so a fixed small offset
+// wasn't enough to reliably land back in the correct day. since/until are
+// UTC timestamps we chose ourselves, and period=day always returns one
+// point per day in chronological order starting at chunkStart, so position
+// is a source of truth end_time isn't.
 async function fetchFacebookDayMetric(cfg, metric, start, end, mode) {
   var daily = {};
   var chunkEnd = new Date(end);
@@ -76,9 +78,9 @@ async function fetchFacebookDayMetric(cfg, metric, start, end, mode) {
     if (data.error) throw new Error('Facebook ' + metric + ' fetch failed: ' + JSON.stringify(data.error));
 
     var series = (data.data && data.data.length) ? (data.data[0].values || []) : [];
-    series.forEach(function (point) {
-      if (typeof point.value !== 'number' || !point.end_time) return;
-      var dateKey = dateKeyInTz(new Date(new Date(point.end_time).getTime() - 1000).toISOString());
+    series.forEach(function (point, i) {
+      if (typeof point.value !== 'number') return;
+      var dateKey = new Date(chunkStart.getTime() + i * 86400000).toISOString().slice(0, 10);
       daily[dateKey] = mode === 'sum' ? (daily[dateKey] || 0) + point.value : point.value;
     });
 

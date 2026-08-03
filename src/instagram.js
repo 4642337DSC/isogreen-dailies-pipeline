@@ -1,7 +1,7 @@
 import { fetchJson } from './http.js';
 import { GRAPH_API_VERSION } from './config.js';
 import { matchContent, findById, buildPlatformReport } from './notion.js';
-import { monthRangeSince, isoDate, dateKeyInTz } from './util.js';
+import { monthRangeSince, isoDate } from './util.js';
 
 export async function resolveInstagramUserId(cfg) {
   var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + cfg.FB_PAGE_ID +
@@ -128,13 +128,15 @@ export async function fetchInstagramDailyViews(cfg, start, end) {
 
 // --- Instagram: account-level "follower_count" time-series insight ---
 // Unlike "views", follower_count supports a real plain period=day time
-// series (no total_value workaround needed) - one call per <=30-day chunk,
-// same end_time-boundary handling as Facebook's page_fans (see
-// fetchFacebookDayMetric's comment: end_time is the exclusive end of the
-// day, step back 1 second to land inside the actual day). Used by
-// scripts/backfill-follower-history.js. Errors are logged and skipped per
-// chunk rather than thrown, in case some part of the history falls outside
-// whatever retention window this metric turns out to have.
+// series (no total_value workaround needed) - one call per <=30-day chunk.
+// Each point's calendar day is derived from its POSITION in the series
+// (chunkStart + i days), not from Meta's own end_time field - see
+// fetchFacebookDayMetric's comment in facebook.js for why trusting
+// end_time (even with a boundary offset correction) turned out to
+// mislabel data by a full day. Used by scripts/backfill-follower-history.js.
+// Errors are logged and skipped per chunk rather than thrown, in case some
+// part of the history falls outside whatever retention window this metric
+// turns out to have.
 export async function fetchInstagramDailyFollowers(cfg, start, end) {
   var igUserId = await resolveInstagramUserId(cfg);
   var daily = {};
@@ -153,9 +155,9 @@ export async function fetchInstagramDailyFollowers(cfg, start, end) {
       console.log('Instagram follower_count fetch failed for ' + isoDate(chunkStart) + '..' + isoDate(chunkEnd) + ': ' + JSON.stringify(data.error));
     } else {
       var series = (data.data && data.data.length) ? (data.data[0].values || []) : [];
-      series.forEach(function (point) {
-        if (typeof point.value !== 'number' || !point.end_time) return;
-        var dateKey = dateKeyInTz(new Date(new Date(point.end_time).getTime() - 1000).toISOString());
+      series.forEach(function (point, i) {
+        if (typeof point.value !== 'number') return;
+        var dateKey = new Date(chunkStart.getTime() + i * 86400000).toISOString().slice(0, 10);
         daily[dateKey] = point.value;
       });
     }
