@@ -1278,22 +1278,36 @@
       return;
     }
 
-    // fillMode "zero": a missing day genuinely means 0 (no views measured).
-    // fillMode "forward": a missing day means "no new snapshot" - carry the
-    // last known value forward instead of dropping to 0, since a follower
-    // count doesn't actually reset just because we didn't check that day.
-    var series = {};
+    // hasReal[i] marks days that should actually be drawn - a day without
+    // real data is left as a gap in the line (not plotted as 0), so a
+    // platform with no history yet (e.g. Instagram followers only cover
+    // the trailing ~30 days) doesn't render as "went to zero" before that;
+    // the line just starts wherever real data actually begins.
+    //
+    // fillMode "zero": a day only counts as real if it has its own
+    // explicit entry - true for every mode this powers (Daily/Cumulated
+    // Views), including YouTube's last ~2-3 days, which are unprocessed
+    // (not zero) due to its reporting lag.
+    // fillMode "forward": once the first real snapshot appears, every day
+    // from then on counts as real (carrying that value forward is
+    // legitimate - a follower count doesn't reset just because we didn't
+    // check that exact day) - only days *before* the first real snapshot
+    // are left blank.
+    var series = {}, hasReal = {};
     tab.platforms.forEach(function (p) {
       var source = tab.source[p.key] || {};
-      var raw;
+      var raw, real;
       if (tab.fillMode === "forward") {
-        var last = 0;
-        raw = days.map(function (d) {
-          if (typeof source[d] === "number") last = source[d];
-          return last;
+        var last = 0, seen = false;
+        raw = []; real = [];
+        days.forEach(function (d) {
+          if (typeof source[d] === "number") { last = source[d]; seen = true; }
+          raw.push(last);
+          real.push(seen);
         });
       } else {
         raw = days.map(function (d) { return source[d] || 0; });
+        real = days.map(function (d) { return typeof source[d] === "number"; });
       }
       if (tab.cumulative) {
         var running = 0;
@@ -1301,11 +1315,12 @@
       } else {
         series[p.key] = raw;
       }
+      hasReal[p.key] = real;
     });
 
     var yMax = 0;
     tab.platforms.forEach(function (p) {
-      series[p.key].forEach(function (v) { if (v > yMax) yMax = v; });
+      series[p.key].forEach(function (v, i) { if (hasReal[p.key][i] && v > yMax) yMax = v; });
     });
     yMax = yMax <= 0 ? 1 : yMax * 1.08;
 
@@ -1330,15 +1345,22 @@
       svg.appendChild(lab);
     });
 
-    // lines
+    // lines - a fresh "M" starts a new segment after any gap, so missing
+    // stretches (see hasReal above) just leave a break in the line rather
+    // than dipping to 0.
     tab.platforms.forEach(function (p) {
-      var d = "";
+      var d = "", drawing = false;
+      var lastRealIdx = -1;
       for (var i = 0; i < days.length; i++) {
-        d += (i === 0 ? "M" : "L") + x(i).toFixed(1) + "," + y(series[p.key][i]).toFixed(1) + " ";
+        if (!hasReal[p.key][i]) { drawing = false; continue; }
+        d += (drawing ? "L" : "M") + x(i).toFixed(1) + "," + y(series[p.key][i]).toFixed(1) + " ";
+        drawing = true;
+        lastRealIdx = i;
       }
       svg.appendChild(el("path", { d: d, class: "trendline", stroke: p.color }));
-      var lastVal = series[p.key][days.length - 1];
-      svg.appendChild(el("circle", { cx: x(days.length - 1), cy: y(lastVal), r: 4, fill: p.color, class: "enddot" }));
+      if (lastRealIdx !== -1) {
+        svg.appendChild(el("circle", { cx: x(lastRealIdx), cy: y(series[p.key][lastRealIdx]), r: 4, fill: p.color, class: "enddot" }));
+      }
     });
 
     // crosshair + hit layer
@@ -1364,11 +1386,14 @@
       var cx = x(i);
       crosshair.setAttribute("x1", cx); crosshair.setAttribute("x2", cx);
       crosshair.style.opacity = 1;
+      var visibleVals = [];
       dots.forEach(function (dot, idx) {
         var key = tab.platforms[idx].key;
+        if (!hasReal[key][i]) { dot.style.opacity = 0; return; }
         dot.setAttribute("cx", cx);
         dot.setAttribute("cy", y(series[key][i]));
         dot.style.opacity = 1;
+        visibleVals.push(series[key][i]);
       });
       tooltip.textContent = "";
       var dateEl = document.createElement("div");
@@ -1388,13 +1413,14 @@
         key.appendChild(stroke); key.appendChild(label);
         var val = document.createElement("span");
         val.className = "tooltip-val";
-        val.textContent = fmtFull(series[p.key][i]);
+        val.textContent = hasReal[p.key][i] ? fmtFull(series[p.key][i]) : "—";
         row.appendChild(key); row.appendChild(val);
         tooltip.appendChild(row);
       });
       var rect = svg.getBoundingClientRect();
       tooltip.style.left = (rect.left + cx) + "px";
-      tooltip.style.top = (rect.top + y(Math.max.apply(null, tab.platforms.map(function (p) { return series[p.key][i]; }))) - 12) + "px";
+      var topVal = visibleVals.length ? Math.max.apply(null, visibleVals) : 0;
+      tooltip.style.top = (rect.top + y(topVal) - 12) + "px";
       tooltip.classList.add("show");
     }
     function hideTip() {
@@ -1410,7 +1436,16 @@
       showAt(nearestIndex(px));
     });
     hit.addEventListener("pointerleave", hideTip);
-    hit.addEventListener("focus", function () { showAt(days.length - 1); });
+    hit.addEventListener("focus", function () {
+      // Jump to the most recent day any platform actually has real data
+      // for, not necessarily the domain's literal last day (which can be a
+      // gap for everyone, e.g. before today's sync has run).
+      var lastAny = days.length - 1;
+      for (var i = days.length - 1; i >= 0; i--) {
+        if (tab.platforms.some(function (p) { return hasReal[p.key][i]; })) { lastAny = i; break; }
+      }
+      showAt(lastAny);
+    });
     hit.setAttribute("tabindex", "0");
     hit.addEventListener("blur", hideTip);
   }
