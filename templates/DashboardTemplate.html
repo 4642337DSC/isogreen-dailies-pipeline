@@ -720,10 +720,14 @@
 
   <div class="filterbar" role="group" aria-label="Date range">
     <span class="flabel">Range</span>
+    <button class="chip" data-range="all" type="button" aria-pressed="true">All time</button>
+    <button class="chip" data-range="year-current" type="button" aria-pressed="false">Current year</button>
+    <button class="chip" data-range="year-last" type="button" aria-pressed="false">Last completed year</button>
+    <button class="chip" data-range="365" type="button" aria-pressed="false">Last year</button>
+    <button class="chip" data-range="month-current" type="button" aria-pressed="false">Current month</button>
+    <button class="chip" data-range="month-last" type="button" aria-pressed="false">Last completed month</button>
     <button class="chip" data-range="30" type="button" aria-pressed="false">Last 30 days</button>
     <button class="chip" data-range="90" type="button" aria-pressed="false">Last 90 days</button>
-    <button class="chip" data-range="365" type="button" aria-pressed="false">Last 12 months</button>
-    <button class="chip" data-range="all" type="button" aria-pressed="true">All time</button>
     <span class="flabel" style="margin-left:8px;">Custom</span>
     <input class="date-input" id="rangeFrom" type="date" aria-label="Custom range: from date" />
     <span class="date-sep">–</span>
@@ -920,23 +924,53 @@
   var LAST_SYNCED = "__LAST_SYNCED__";
 
   /* ===================== state ===================== */
-  // customFrom/customTo (both null by default = "all time") take priority
-  // over the preset chips when set - either one alone is a valid open-ended
-  // range (e.g. customFrom only = "from that date through now").
-  var state = { range: "all", customFrom: null, customTo: null, sortKey: "date", sortDir: "desc", search: "", tableLimit: 5 };
+  // activePreset drives the range whenever a chip is selected; customFrom/
+  // customTo (both null by default) take over once the date inputs are
+  // edited by hand, clearing activePreset - either bound alone is a valid
+  // open-ended range (e.g. customFrom only = "from that date through now").
+  var state = { activePreset: "all", customFrom: null, customTo: null, sortKey: "date", sortDir: "desc", search: "", tableLimit: 5 };
   var TABLE_PAGE_STEPS = [5, 15, Infinity]; // initial view, "Show more" (+10), "Show all"
 
+  // { start, end } for a named preset key - end === null means "open,
+  // through whatever the latest real data is" (current year/month, and the
+  // rolling day-count presets). All computed relative to LAST_SYNCED, same
+  // "as of" reference the rest of the dashboard uses, not the viewer's
+  // local clock.
+  function computeRangePreset(key) {
+    var now = new Date(LAST_SYNCED + "T00:00:00");
+    var year = now.getFullYear();
+    var month = now.getMonth();
+    function iso(y, m, d) { return new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10); }
+    function daysAgo(n) {
+      var d = new Date(LAST_SYNCED + "T00:00:00");
+      d.setDate(d.getDate() - n);
+      return d.toISOString().slice(0, 10);
+    }
+    switch (key) {
+      case "all": return { start: null, end: null };
+      case "30": return { start: daysAgo(30), end: null };
+      case "90": return { start: daysAgo(90), end: null };
+      case "365": return { start: daysAgo(365), end: null };
+      case "year-current": return { start: iso(year, 0, 1), end: null };
+      case "year-last": return { start: iso(year - 1, 0, 1), end: iso(year - 1, 11, 31) };
+      case "month-current": return { start: iso(year, month, 1), end: null };
+      case "month-last": {
+        var lastDayPrevMonth = new Date(Date.UTC(year, month, 0)); // day 0 = last day of the previous month, rolls back across a year boundary in January automatically
+        var firstDayPrevMonth = new Date(Date.UTC(lastDayPrevMonth.getUTCFullYear(), lastDayPrevMonth.getUTCMonth(), 1));
+        return { start: firstDayPrevMonth.toISOString().slice(0, 10), end: lastDayPrevMonth.toISOString().slice(0, 10) };
+      }
+      default: return null;
+    }
+  }
+
   function rangeStartDate() {
-    if (state.customFrom) return state.customFrom;
-    if (state.range === "all") return null;
-    var days = parseInt(state.range, 10);
-    var d = new Date(LAST_SYNCED + "T00:00:00");
-    d.setDate(d.getDate() - days);
-    return d.toISOString().slice(0, 10);
+    if (state.activePreset) return computeRangePreset(state.activePreset).start;
+    return state.customFrom;
   }
 
   function rangeEndDate() {
-    return state.customTo || null; // presets always run through "now" - no upper bound to apply
+    if (state.activePreset) return computeRangePreset(state.activePreset).end;
+    return state.customTo;
   }
 
   function filteredData() {
@@ -1699,12 +1733,13 @@
 
   Array.prototype.forEach.call(document.querySelectorAll(".chip[data-range]"), function (btn) {
     btn.addEventListener("click", function () {
-      state.range = btn.dataset.range;
+      state.activePreset = btn.dataset.range;
       state.customFrom = null;
       state.customTo = null;
       state.tableLimit = TABLE_PAGE_STEPS[0];
-      rangeFromInput.value = "";
-      rangeToInput.value = "";
+      var preset = computeRangePreset(state.activePreset);
+      rangeFromInput.value = preset.start || "";
+      rangeToInput.value = preset.end || "";
       setActiveChip(btn);
       renderAll();
     });
@@ -1716,6 +1751,7 @@
   function onCustomRangeChange() {
     state.customFrom = rangeFromInput.value || null;
     state.customTo = rangeToInput.value || null;
+    state.activePreset = null;
     state.tableLimit = TABLE_PAGE_STEPS[0];
     rangeToInput.min = state.customFrom || "";
     rangeFromInput.max = state.customTo || "";
@@ -1724,7 +1760,7 @@
     } else {
       // Both custom fields cleared - fall back to "All time" rather than
       // whatever preset chip was active before switching to custom.
-      state.range = "all";
+      state.activePreset = "all";
       setActiveChip(document.querySelector('.chip[data-range="all"]'));
     }
     renderAll();
@@ -1769,6 +1805,19 @@
     renderMonthly();
     renderTable();
   }
+
+  // The "current"/"last completed" year+month chips show the actual
+  // year/month name (e.g. "Current year (2026)") rather than a generic
+  // label - computed once from LAST_SYNCED, same reference date the range
+  // presets themselves use.
+  (function labelYearMonthChips() {
+    var now = new Date(LAST_SYNCED + "T00:00:00");
+    var lastMonthDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 0));
+    document.querySelector('.chip[data-range="year-current"]').textContent = "Current year (" + now.getFullYear() + ")";
+    document.querySelector('.chip[data-range="year-last"]').textContent = "Last completed year (" + (now.getFullYear() - 1) + ")";
+    document.querySelector('.chip[data-range="month-current"]').textContent = "Current month (" + MONTH_NAMES[now.getMonth()] + ")";
+    document.querySelector('.chip[data-range="month-last"]').textContent = "Last completed month (" + MONTH_NAMES[lastMonthDate.getUTCMonth()] + ")";
+  })();
 
   renderLegend();
   renderTheadOnce();
