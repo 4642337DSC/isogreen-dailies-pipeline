@@ -350,6 +350,25 @@
   .legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
 
   /* ---------- trend chart ---------- */
+  .chart-tabs { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .chart-tab {
+    border: 1px solid var(--border-2);
+    background: var(--surface);
+    color: var(--ink-2);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+  .chart-tab:hover { background: var(--surface-2); color: var(--ink); }
+  .chart-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chart-tab[aria-selected="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
   .chart-scroll { overflow-x: auto; }
   .chart-svg { display: block; width: 100%; height: 260px; touch-action: pan-y; }
   .gridline { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
@@ -477,27 +496,34 @@
   }
 
   /* ---------- monthly breakdown ---------- */
-  .month-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 14px; }
-  .month-row { background: var(--surface); }
+  .month-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+  @media (max-width: 860px) {
+    .month-list { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .month-list { grid-template-columns: 1fr; }
+  }
+  .month-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; align-self: start; }
   .month-row summary {
     list-style: none;
     cursor: pointer;
-    display: grid;
-    grid-template-columns: 22px 140px 1fr auto auto;
-    align-items: center;
-    gap: 14px;
-    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
   }
   .month-row summary::-webkit-details-marker { display: none; }
   .month-row summary:hover { background: var(--surface-2); }
   .month-row summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .month-caret { color: var(--muted); font-size: 11px; transition: transform 0.12s ease; }
+  .month-summary-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .month-summary-label { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .month-caret { color: var(--muted); font-size: 11px; transition: transform 0.12s ease; flex: none; }
   .month-row[open] .month-caret { transform: rotate(90deg); }
   .month-label { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; }
   .month-mix { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
   .month-count { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
-  .month-total { font-family: var(--font-mono); font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; min-width: 76px; }
-  .month-videos { padding: 4px 16px 14px 52px; display: flex; flex-direction: column; gap: 7px; }
+  .month-total { font-family: var(--font-mono); font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; flex: none; }
+  .month-videos { padding: 4px 16px 14px 16px; display: flex; flex-direction: column; gap: 7px; }
   .month-video-item { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; }
   .month-video-name { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .month-video-total { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); flex: none; }
@@ -738,8 +764,13 @@
 
   <section class="card">
     <div class="card-head">
-      <div class="card-title">Reach over time</div>
-      <div class="card-note">Actual daily views, real API data — TikTok not yet available</div>
+      <div class="card-title">Views - selected period</div>
+      <div class="card-note" id="trendNote"></div>
+    </div>
+    <div class="chart-tabs" role="tablist" aria-label="Chart view">
+      <button class="chart-tab" data-tab="daily" type="button" aria-selected="true">Daily Views</button>
+      <button class="chart-tab" data-tab="cumulative" type="button" aria-selected="false">Cumulated Views</button>
+      <button class="chart-tab" data-tab="followers" type="button" aria-selected="false">Followers</button>
     </div>
     <div class="legend" id="trendLegend"></div>
     <div class="chart-scroll">
@@ -836,6 +867,13 @@
   // from this map as "no real data," not "zero views."
   var DAILY_VIEWS = /*__DAILY_VIEWS_DATA__*/;
 
+  // One immutable snapshot per platform per day - see src/audience.js. Has
+  // a "tt" key (unlike DAILY_VIEWS/MONTHLY_VIEWS) since follower counts are
+  // available for TikTok even though its view counts aren't. No backfill
+  // exists for this - coverage only starts from whenever the Follower
+  // Snapshots database was first created.
+  var FOLLOWER_SNAPSHOTS = /*__FOLLOWER_SNAPSHOTS_DATA__*/;
+
   var PLATFORMS = [
     { key: "yt", label: "YouTube",   color: "var(--p-yt)" },
     { key: "tt", label: "TikTok",    color: "var(--p-tt)" },
@@ -928,7 +966,7 @@
   // customTo (both null by default) take over once the date inputs are
   // edited by hand, clearing activePreset - either bound alone is a valid
   // open-ended range (e.g. customFrom only = "from that date through now").
-  var state = { activePreset: "all", customFrom: null, customTo: null, sortKey: "date", sortDir: "desc", search: "", tableLimit: 5 };
+  var state = { activePreset: "all", customFrom: null, customTo: null, sortKey: "date", sortDir: "desc", search: "", tableLimit: 5, chartTab: "daily" };
   var TABLE_PAGE_STEPS = [5, 15, Infinity]; // initial view, "Show more" (+10), "Show all"
 
   // { start, end } for a named preset key - end === null means "open,
@@ -1099,16 +1137,33 @@
     tile("Facebook", "fb", sums.fb, counts.fb + " tracked" + (isReal.fb ? "" : " (est.)"));
   }
 
-  /* ===================== render: legend ===================== */
-  // "Reach over time" only ever plots platforms with a real daily-API
-  // signal - TikTok has none yet (see fetchInstagramDailyViews and friends
-  // in src/dailyViews.js), so it's excluded from the chart and its legend.
+  /* ===================== render: legend + trend chart ===================== */
+  // "Daily Views"/"Cumulated Views" only ever plot platforms with a real
+  // daily-API signal - TikTok has none yet (see fetchInstagramDailyViews
+  // and friends in src/dailyViews.js). "Followers" includes TikTok, since
+  // follower counts ARE available for it even though view counts aren't.
   var TREND_PLATFORMS = PLATFORMS.filter(function (p) { return p.key !== "tt"; });
 
+  var CHART_TABS = {
+    daily: {
+      platforms: TREND_PLATFORMS, source: DAILY_VIEWS, cumulative: false, fillMode: "zero",
+      note: "Actual daily views, real API data — TikTok not yet available"
+    },
+    cumulative: {
+      platforms: TREND_PLATFORMS, source: DAILY_VIEWS, cumulative: true, fillMode: "zero",
+      note: "Cumulative real views for the selected period — TikTok not yet available"
+    },
+    followers: {
+      platforms: PLATFORMS, source: FOLLOWER_SNAPSHOTS, cumulative: false, fillMode: "forward",
+      note: "Follower/subscriber counts over the selected period — coverage starts from whenever daily tracking began, no history before that"
+    }
+  };
+
   function renderLegend() {
+    var tab = CHART_TABS[state.chartTab];
     var wrap = document.getElementById("trendLegend");
     wrap.textContent = "";
-    TREND_PLATFORMS.forEach(function (p) {
+    tab.platforms.forEach(function (p) {
       var item = document.createElement("span");
       item.className = "legend-item";
       item.appendChild(platformIcon(p.key));
@@ -1119,7 +1174,6 @@
     });
   }
 
-  /* ===================== render: trend chart ===================== */
   var svgNS = "http://www.w3.org/2000/svg";
   function el(tag, attrs) {
     var e = document.createElementNS(svgNS, tag);
@@ -1130,14 +1184,14 @@
     return getComputedStyle(document.body).getPropertyValue(name.replace("var(", "").replace(")", "")).trim();
   }
 
-  // The chosen range's bounds if set, otherwise the full span DAILY_VIEWS
-  // actually has data for (there's no post-date fallback anymore - this
-  // chart only ever plots real per-day API data).
-  function dailyDomain(start, end) {
+  // The chosen range's bounds if set, otherwise the full span the tab's own
+  // source actually has data for (there's no post-date fallback - every
+  // tab only ever plots real per-day data).
+  function computeDomain(platforms, source, start, end) {
     if (start && end) return { start: start, end: end };
     var allDates = [];
-    TREND_PLATFORMS.forEach(function (p) {
-      var series = DAILY_VIEWS[p.key] || {};
+    platforms.forEach(function (p) {
+      var series = source[p.key] || {};
       Object.keys(series).forEach(function (d) { allDates.push(d); });
     });
     if (!allDates.length) return null;
@@ -1157,10 +1211,12 @@
   }
 
   function renderTrend() {
+    var tab = CHART_TABS[state.chartTab];
     var svg = document.getElementById("trendChart");
     svg.textContent = "";
+    document.getElementById("trendNote").textContent = tab.note;
 
-    var domain = dailyDomain(rangeStartDate(), rangeEndDate());
+    var domain = computeDomain(tab.platforms, tab.source, rangeStartDate(), rangeEndDate());
     var days = domain ? dayRange(domain.start, domain.end) : [];
 
     var W = Math.max(svg.clientWidth || 900, 600);
@@ -1170,21 +1226,38 @@
 
     if (days.length === 0) {
       var msg = el("text", { x: W / 2, y: H / 2, class: "axislabel", "text-anchor": "middle" });
-      msg.textContent = "No real daily view data available for this range yet.";
+      msg.textContent = "No real data available for this range yet.";
       svg.appendChild(msg);
       return;
     }
 
-    // Actual per-day views (not cumulative) for the days in range - real
-    // API data only, no per-video/post-date fallback estimate.
+    // fillMode "zero": a missing day genuinely means 0 (no views measured).
+    // fillMode "forward": a missing day means "no new snapshot" - carry the
+    // last known value forward instead of dropping to 0, since a follower
+    // count doesn't actually reset just because we didn't check that day.
     var series = {};
-    TREND_PLATFORMS.forEach(function (p) {
-      var source = DAILY_VIEWS[p.key] || {};
-      series[p.key] = days.map(function (d) { return source[d] || 0; });
+    tab.platforms.forEach(function (p) {
+      var source = tab.source[p.key] || {};
+      var raw;
+      if (tab.fillMode === "forward") {
+        var last = 0;
+        raw = days.map(function (d) {
+          if (typeof source[d] === "number") last = source[d];
+          return last;
+        });
+      } else {
+        raw = days.map(function (d) { return source[d] || 0; });
+      }
+      if (tab.cumulative) {
+        var running = 0;
+        series[p.key] = raw.map(function (v) { running += v; return running; });
+      } else {
+        series[p.key] = raw;
+      }
     });
 
     var yMax = 0;
-    TREND_PLATFORMS.forEach(function (p) {
+    tab.platforms.forEach(function (p) {
       series[p.key].forEach(function (v) { if (v > yMax) yMax = v; });
     });
     yMax = yMax <= 0 ? 1 : yMax * 1.08;
@@ -1211,7 +1284,7 @@
     });
 
     // lines
-    TREND_PLATFORMS.forEach(function (p) {
+    tab.platforms.forEach(function (p) {
       var d = "";
       for (var i = 0; i < days.length; i++) {
         d += (i === 0 ? "M" : "L") + x(i).toFixed(1) + "," + y(series[p.key][i]).toFixed(1) + " ";
@@ -1224,7 +1297,7 @@
     // crosshair + hit layer
     var crosshair = el("line", { x1: 0, x2: 0, y1: padT, y2: H - padB, class: "crosshair", style: "opacity:0" });
     svg.appendChild(crosshair);
-    var dots = TREND_PLATFORMS.map(function (p) { return el("circle", { r: 4, fill: p.color, class: "enddot", style: "opacity:0" }); });
+    var dots = tab.platforms.map(function (p) { return el("circle", { r: 4, fill: p.color, class: "enddot", style: "opacity:0" }); });
     dots.forEach(function (d) { svg.appendChild(d); });
 
     var tooltip = document.getElementById("tooltip");
@@ -1245,7 +1318,7 @@
       crosshair.setAttribute("x1", cx); crosshair.setAttribute("x2", cx);
       crosshair.style.opacity = 1;
       dots.forEach(function (dot, idx) {
-        var key = TREND_PLATFORMS[idx].key;
+        var key = tab.platforms[idx].key;
         dot.setAttribute("cx", cx);
         dot.setAttribute("cy", y(series[key][i]));
         dot.style.opacity = 1;
@@ -1255,7 +1328,7 @@
       dateEl.className = "tooltip-date";
       dateEl.textContent = fmtDate(days[i]);
       tooltip.appendChild(dateEl);
-      TREND_PLATFORMS.forEach(function (p) {
+      tab.platforms.forEach(function (p) {
         var row = document.createElement("div");
         row.className = "tooltip-row";
         var key = document.createElement("span");
@@ -1274,7 +1347,7 @@
       });
       var rect = svg.getBoundingClientRect();
       tooltip.style.left = (rect.left + cx) + "px";
-      tooltip.style.top = (rect.top + y(Math.max.apply(null, TREND_PLATFORMS.map(function (p) { return series[p.key][i]; }))) - 12) + "px";
+      tooltip.style.top = (rect.top + y(Math.max.apply(null, tab.platforms.map(function (p) { return series[p.key][i]; }))) - 12) + "px";
       tooltip.classList.add("show");
     }
     function hideTip() {
@@ -1436,6 +1509,18 @@
       label.className = "month-label";
       label.textContent = monthLabel;
 
+      var tot = document.createElement("span");
+      tot.className = "month-total";
+      tot.textContent = fmtCompact(m.total) + (m.estimated ? "*" : "");
+      tot.title = fmtFull(m.total) + (m.estimated ? " (estimated from shorts posted this month — no API data yet for this month)" : " (from each platform's own API)");
+
+      var top = document.createElement("div");
+      top.className = "month-summary-top";
+      var labelWrap = document.createElement("span");
+      labelWrap.className = "month-summary-label";
+      labelWrap.appendChild(caret); labelWrap.appendChild(label);
+      top.appendChild(labelWrap); top.appendChild(tot);
+
       var mix = document.createElement("span");
       mix.className = "month-mix";
       PLATFORMS.forEach(function (p) {
@@ -1445,14 +1530,9 @@
       var count = document.createElement("span");
       count.className = "month-count";
       count.textContent = m.rows.length + (m.rows.length === 1 ? " short" : " shorts");
+      mix.appendChild(count);
 
-      var tot = document.createElement("span");
-      tot.className = "month-total";
-      tot.textContent = fmtCompact(m.total) + (m.estimated ? "*" : "");
-      tot.title = fmtFull(m.total) + (m.estimated ? " (estimated from shorts posted this month — no API data yet for this month)" : " (from each platform's own API)");
-
-      summary.appendChild(caret); summary.appendChild(label); summary.appendChild(mix);
-      summary.appendChild(count); summary.appendChild(tot);
+      summary.appendChild(top); summary.appendChild(mix);
       details.appendChild(summary);
 
       var videosWrap = document.createElement("div");
@@ -1722,6 +1802,17 @@
   });
 
   /* ===================== wire up controls ===================== */
+  Array.prototype.forEach.call(document.querySelectorAll(".chart-tab"), function (btn) {
+    btn.addEventListener("click", function () {
+      state.chartTab = btn.dataset.tab;
+      Array.prototype.forEach.call(document.querySelectorAll(".chart-tab"), function (b) {
+        b.setAttribute("aria-selected", b === btn ? "true" : "false");
+      });
+      renderLegend();
+      renderTrend();
+    });
+  });
+
   var rangeFromInput = document.getElementById("rangeFrom");
   var rangeToInput = document.getElementById("rangeTo");
 
