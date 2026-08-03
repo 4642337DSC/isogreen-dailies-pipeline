@@ -10,4 +10,4 @@ var THUMBS_DIR = path.join(__dirname, '..', 'dist', 'clients', 'isogreen', 'thum
 var cfg = getConfig();
 requireConfig(cfg);
 var rows = await fetchNotionRows(cfg);
-await syncThumbnails(rows, THUMBS_DIR);
+await syncThumbnails(cfg, rows, THUMBS_DIR);

@@ -49,7 +49,7 @@ export async function syncAllViews() {
   try { await syncAudience(cfg); } catch (e) { console.log('Audience sync failed: ' + e); }
 
   var thumbMap = {};
-  try { thumbMap = await syncThumbnails(rows, path.join(DIST_DIR, 'thumbs')); } catch (e) { console.log('Thumbnail sync failed: ' + e); }
+  try { thumbMap = await syncThumbnails(cfg, rows, path.join(DIST_DIR, 'thumbs')); } catch (e) { console.log('Thumbnail sync failed: ' + e); }
 
   var oldestDate = oldestPostDate(rows);
 

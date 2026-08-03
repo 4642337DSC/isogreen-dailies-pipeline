@@ -16,14 +16,19 @@ export async function fetchAllInstagramMedia(cfg) {
   var igUserId = await resolveInstagramUserId(cfg);
   var media = [];
   var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + igUserId + '/media' +
-    '?fields=id,caption,timestamp,permalink,media_product_type' +
+    '?fields=id,caption,timestamp,permalink,media_product_type,thumbnail_url,media_url' +
     '&limit=100&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
   while (url) {
     var data = await fetchJson(url);
     if (data.error) throw new Error('Instagram media fetch failed: ' + JSON.stringify(data.error));
     (data.data || []).forEach(function (item) {
       if (item.media_product_type !== 'REELS' && item.media_product_type !== 'VIDEO') return;
-      media.push({ id: item.id, text: item.caption || '', publishedAt: item.timestamp, permalink: item.permalink || null });
+      // thumbnail_url is the video's cover frame; media_url is a fallback
+      // for media types where Meta doesn't expose a separate thumbnail.
+      media.push({
+        id: item.id, text: item.caption || '', publishedAt: item.timestamp, permalink: item.permalink || null,
+        thumbnailUrl: item.thumbnail_url || item.media_url || null
+      });
     });
     url = (data.paging && data.paging.next) ? data.paging.next : null;
   }

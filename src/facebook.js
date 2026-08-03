@@ -10,7 +10,7 @@ import { dateKeyInTz } from './util.js';
 export async function fetchAllFacebookVideos(cfg) {
   var videos = [];
   var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + cfg.FB_PAGE_ID + '/video_reels' +
-    '?fields=id,description,created_time,permalink_url,video_insights.metric(blue_reels_play_count)' +
+    '?fields=id,description,created_time,permalink_url,picture,video_insights.metric(blue_reels_play_count)' +
     '&limit=100&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
   while (url) {
     var data = await fetchJson(url);
@@ -24,7 +24,7 @@ export async function fetchAllFacebookVideos(cfg) {
       var permalink = item.permalink_url
         ? (item.permalink_url.indexOf('http') === 0 ? item.permalink_url : 'https://www.facebook.com' + item.permalink_url)
         : null;
-      videos.push({ id: item.id, text: item.description || '', publishedAt: item.created_time, permalink: permalink, views: views });
+      videos.push({ id: item.id, text: item.description || '', publishedAt: item.created_time, permalink: permalink, views: views, picture: item.picture || null });
     });
     url = (data.paging && data.paging.next) ? data.paging.next : null;
   }
