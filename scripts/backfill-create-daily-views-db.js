@@ -26,8 +26,21 @@ var existing = await fetchJson('https://api.notion.com/v1/databases/' + cfg.MONT
 if (existing.object === 'error') throw new Error('Could not read the Monthly Views database: ' + existing.message);
 console.log('Monthly Views parent: ' + JSON.stringify(existing.parent));
 
+// The create-database endpoint only accepts a page_id/database_id/workspace
+// parent - not block_id, which is what Monthly Views actually has (it's
+// nested inside some block on a page, not a direct child of the page).
+// Walk up the block's own parent chain until we hit something the API will
+// accept.
+var parent = existing.parent;
+while (parent.type === 'block_id') {
+  var block = await fetchJson('https://api.notion.com/v1/blocks/' + parent.block_id, { headers: headers });
+  if (block.object === 'error') throw new Error('Could not resolve parent block: ' + block.message);
+  console.log('Resolved block parent: ' + JSON.stringify(block.parent));
+  parent = block.parent;
+}
+
 var body = {
-  parent: existing.parent,
+  parent: parent,
   icon: { type: 'emoji', emoji: '📆' },
   title: [{ type: 'text', text: { content: 'Daily Views' } }],
   properties: {
