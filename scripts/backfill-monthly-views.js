@@ -2,16 +2,17 @@ import { getConfig, requireConfig } from '../src/config.js';
 import { fetchNotionRows } from '../src/notion.js';
 import { syncMonthlyViews } from '../src/monthlyViews.js';
 
-// Standalone monthly-views backfill (Instagram + Facebook only - see
-// src/monthlyViews.js for why YouTube/TikTok are excluded). Safe to re-run -
-// every write is an upsert (find-or-create by platform+month), so
-// re-running just refreshes the same rows rather than duplicating them.
+// Standalone monthly-views backfill (YouTube + Instagram + Facebook - see
+// src/monthlyViews.js for why TikTok is excluded). Safe to re-run - every
+// write is an upsert (find-or-create by platform+month), so re-running just
+// refreshes the same rows rather than duplicating them.
 var cfg = getConfig();
 requireConfig(cfg);
 if (!cfg.MONTHLY_VIEWS_DATABASE_ID) {
   throw new Error('Set MONTHLY_VIEWS_DATABASE_ID first (see .env.example).');
 }
 var fbEnabled = !!(cfg.FB_PAGE_ID && cfg.FB_PAGE_ACCESS_TOKEN);
+var ytEnabled = !!(cfg.YOUTUBE_OAUTH_CLIENT_ID && cfg.YOUTUBE_OAUTH_CLIENT_SECRET && cfg.YOUTUBE_REFRESH_TOKEN);
 
 var rows = await fetchNotionRows(cfg);
 var oldestDate = rows.reduce(function (oldest, r) {
@@ -20,4 +21,4 @@ var oldestDate = rows.reduce(function (oldest, r) {
   return (!oldest || d < oldest) ? d : oldest;
 }, null) || new Date();
 
-await syncMonthlyViews(cfg, { fbEnabled: fbEnabled, oldestDate: oldestDate });
+await syncMonthlyViews(cfg, { fbEnabled: fbEnabled, ytEnabled: ytEnabled, oldestDate: oldestDate });

@@ -1,6 +1,7 @@
 import { writeMonthlyViews } from './notion.js';
 import { syncInstagramMonthly } from './instagram.js';
 import { syncFacebookMonthly } from './facebook.js';
+import { syncYouTubeMonthly } from './youtubeAnalytics.js';
 
 export { writeMonthlyViews };
 
@@ -13,21 +14,29 @@ export { writeMonthlyViews };
 // shorts posted in that month - so it reflects when views actually
 // happened, including late/ongoing views on older posts.
 //
-// YouTube and TikTok are intentionally excluded: YouTube has no monthly API
-// wired up yet (needs the YouTube Analytics API), and TikTok has no
-// monthly-capable API at all - its old snapshot-derived estimate was
-// removed as unreliable. Both wait until a real per-platform monthly
-// source exists.
+// TikTok is intentionally excluded: it has no monthly-capable API at all -
+// its old snapshot-derived estimate was removed as unreliable. It waits
+// until a real monthly source exists (see scripts/backfill-tiktok-monthly.js
+// for the manual-paste stopgap in the meantime).
 export async function syncMonthlyViews(cfg, ctx) {
-  if (!cfg.MONTHLY_VIEWS_DATABASE_ID || !ctx.fbEnabled) return;
+  if (!cfg.MONTHLY_VIEWS_DATABASE_ID) return;
 
-  try {
-    var igMonthly = await syncInstagramMonthly(cfg, ctx.oldestDate);
-    if (igMonthly) await writeMonthlyViews(cfg, 'Instagram', 'instagram-insights-api', igMonthly);
-  } catch (e) { console.log('Instagram monthly sync failed: ' + e); }
+  if (ctx.ytEnabled) {
+    try {
+      var ytMonthly = await syncYouTubeMonthly(cfg, ctx.oldestDate);
+      if (ytMonthly) await writeMonthlyViews(cfg, 'YouTube', 'youtube-analytics-api', ytMonthly);
+    } catch (e) { console.log('YouTube monthly sync failed: ' + e); }
+  }
 
-  try {
-    var fbMonthly = await syncFacebookMonthly(cfg, ctx.oldestDate);
-    if (fbMonthly) await writeMonthlyViews(cfg, 'Facebook', 'facebook-insights-api', fbMonthly);
-  } catch (e) { console.log('Facebook monthly sync failed: ' + e); }
+  if (ctx.fbEnabled) {
+    try {
+      var igMonthly = await syncInstagramMonthly(cfg, ctx.oldestDate);
+      if (igMonthly) await writeMonthlyViews(cfg, 'Instagram', 'instagram-insights-api', igMonthly);
+    } catch (e) { console.log('Instagram monthly sync failed: ' + e); }
+
+    try {
+      var fbMonthly = await syncFacebookMonthly(cfg, ctx.oldestDate);
+      if (fbMonthly) await writeMonthlyViews(cfg, 'Facebook', 'facebook-insights-api', fbMonthly);
+    } catch (e) { console.log('Facebook monthly sync failed: ' + e); }
+  }
 }

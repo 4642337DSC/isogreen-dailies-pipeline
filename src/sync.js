@@ -34,6 +34,7 @@ export async function syncAllViews() {
   requireConfig(cfg);
   var fbEnabled = !!(cfg.FB_PAGE_ID && cfg.FB_PAGE_ACCESS_TOKEN);
   var tiktokEnabled = !!(cfg.ZERNIO_API_KEY && cfg.ZERNIO_TIKTOK_ACCOUNT_ID);
+  var ytEnabled = !!(cfg.YOUTUBE_OAUTH_CLIENT_ID && cfg.YOUTUBE_OAUTH_CLIENT_SECRET && cfg.YOUTUBE_REFRESH_TOKEN);
 
   var rows = await fetchNotionRows(cfg);
 
@@ -51,7 +52,7 @@ export async function syncAllViews() {
 
   try {
     var oldestDate = oldestPostDate(rows);
-    await syncMonthlyViews(cfg, { fbEnabled: fbEnabled, oldestDate: oldestDate });
+    await syncMonthlyViews(cfg, { fbEnabled: fbEnabled, ytEnabled: ytEnabled, oldestDate: oldestDate });
   } catch (e) { console.log('Monthly views sync failed: ' + e); }
 
   try {

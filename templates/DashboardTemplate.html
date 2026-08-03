@@ -1217,12 +1217,10 @@
   // this falls back to summing that month's posted shorts and marks the
   // total with "*" so it's not confused with a real API figure.
   // Monthly Breakdown only ever covers platforms with a real (or at least
-  // per-video-summable) monthly signal - Instagram + Facebook. YouTube's
-  // monthly API isn't wired up yet, and TikTok has no monthly API at all
-  // (its old snapshot-derived estimate was removed as unreliable) - both
-  // wait until a real per-platform monthly source exists rather than
-  // showing an approximate number here.
-  var MONTHLY_PLATFORMS = PLATFORMS.filter(function (p) { return p.key === "fb" || p.key === "ig"; });
+  // per-video-summable) monthly signal - YouTube + Instagram + Facebook.
+  // TikTok has no monthly API at all (its old snapshot-derived estimate was
+  // removed as unreliable) and waits until a real monthly source exists.
+  var MONTHLY_PLATFORMS = PLATFORMS.filter(function (p) { return p.key === "yt" || p.key === "fb" || p.key === "ig"; });
 
   function renderMonthly() {
     var start = rangeStartDate();
@@ -1246,7 +1244,7 @@
         });
         var estimated = false;
         if (!hasApiData) {
-          apiTotal = rowsInMonth.reduce(function (sum, r) { return sum + (r.fb || 0) + (r.ig || 0); }, 0);
+          apiTotal = rowsInMonth.reduce(function (sum, r) { return sum + (r.yt || 0) + (r.fb || 0) + (r.ig || 0); }, 0);
           estimated = true;
           rowsInMonth.forEach(function (r) {
             MONTHLY_PLATFORMS.forEach(function (p) { if (r[p.key] !== null) platformsWithData[p.key] = true; });
