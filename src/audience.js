@@ -1,7 +1,8 @@
 import { fetchJson } from './http.js';
 import { GRAPH_API_VERSION } from './config.js';
-import { queryNotionDatabase, updateNotionPage } from './notion.js';
+import { queryNotionDatabase, updateNotionPage, writeFollowerSnapshot } from './notion.js';
 import { resolveInstagramUserId } from './instagram.js';
+import { isoDate } from './util.js';
 
 // Account-level follower/subscriber counts (not per-video) - written to a
 // separate small "Channel Stats" database, since the main Video database is
@@ -51,6 +52,17 @@ export async function syncAudience(cfg) {
   }
 
   await writeAudienceStats(cfg, stats);
+
+  if (cfg.FOLLOWER_SNAPSHOTS_DATABASE_ID) {
+    var today = isoDate(new Date());
+    for (var platform of Object.keys(stats)) {
+      var followers = stats[platform].followers;
+      if (typeof followers !== 'number') continue;
+      try {
+        await writeFollowerSnapshot(cfg, platform, today, followers);
+      } catch (e) { console.log(platform + ' follower snapshot failed: ' + e); }
+    }
+  }
 }
 
 export async function writeAudienceStats(cfg, stats) {

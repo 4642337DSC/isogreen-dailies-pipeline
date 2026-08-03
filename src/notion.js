@@ -160,6 +160,40 @@ export async function findDailyViewsRow(cfg, platform, dateKey) {
   return data.results[0].id;
 }
 
+// One immutable row per platform per day, into FOLLOWER_SNAPSHOTS_DATABASE_ID
+// - unlike view counts, no platform exposes a historical follower-count API,
+// so this can only ever be captured going forward from whenever tracking
+// starts (no backfill is possible). See src/audience.js.
+export async function writeFollowerSnapshot(cfg, platform, dateKey, followers) {
+  var existingId = await findFollowerSnapshotRow(cfg, platform, dateKey);
+  var props = {
+    'Label': { title: [{ text: { content: platform + ' · ' + dateKey } }] },
+    'Platform': { select: { name: platform } },
+    'Date': { date: { start: dateKey } },
+    'Followers': { number: followers },
+    'Synced At': { date: { start: new Date().toISOString() } }
+  };
+  if (existingId) {
+    await updateNotionPage(cfg, existingId, props);
+  } else {
+    await createNotionPage(cfg, cfg.FOLLOWER_SNAPSHOTS_DATABASE_ID, props);
+  }
+}
+
+export async function findFollowerSnapshotRow(cfg, platform, dateKey) {
+  var data = await queryNotionDatabase(cfg, cfg.FOLLOWER_SNAPSHOTS_DATABASE_ID, {
+    filter: {
+      and: [
+        { property: 'Platform', select: { equals: platform } },
+        { property: 'Date', date: { equals: dateKey } }
+      ]
+    },
+    page_size: 1
+  });
+  if (data.object === 'error' || !data.results || !data.results.length) return null;
+  return data.results[0].id;
+}
+
 // ===== Matching (shared across platforms) =====
 // Primary key: "Data Postare" vs the post's publish date (same calendar day
 // in SYNC_TIMEZONE, with a +-1 day fallback). Among same-day candidates, the
