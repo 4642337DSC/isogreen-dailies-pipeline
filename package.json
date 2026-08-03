@@ -16,7 +16,9 @@
     "backfill:follower-history": "node scripts/backfill-follower-history.js",
     "backfill:clean-instagram-zero-views": "node scripts/backfill-clean-instagram-zero-views.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "sharp": "^0.35.3"
+  },
   "engines": {
     "node": ">=20"
   }

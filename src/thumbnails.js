@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 import { fetchAllFacebookVideos } from './facebook.js';
 import { fetchAllInstagramMedia } from './instagram.js';
 import { matchContent, findById } from './notion.js';
@@ -7,16 +8,21 @@ import { matchContent, findById } from './notion.js';
 // Notion's Thumbnail file property only exposes a signed S3 URL that expires
 // ~1hr after this script reads it via the real Notion API - not fetchable by
 // anything else later. So every run re-downloads each row's thumbnail
-// straight into dist/thumbs/<cod>.<ext>, which then gets FTP-deployed
+// straight into dist/thumbs/<cod>.jpg, which then gets FTP-deployed
 // alongside the dashboard HTML. No Drive relay, no incremental "skip if
 // already uploaded" bookkeeping - re-downloading the current (small) set of
 // thumbnails fresh every run is simpler and still cheap.
-function extForContentType(contentType) {
-  if (contentType === 'image/png') return '.png';
-  if (contentType === 'image/webp') return '.webp';
-  if (contentType === 'image/gif') return '.gif';
-  return '.jpg'; // covers image/jpeg and any unrecognized type
-}
+//
+// Source images (raw Notion uploads / Meta picture URLs) have come in as
+// large as 4-5MB at full photo/frame resolution - but the largest place a
+// thumbnail is ever displayed is the dashboard's ~148px performance-grid
+// card, so every image is downscaled through sharp before being written.
+// Skipping this step was previously causing very laggy scrolling in both
+// the dashboard and the report's print/PDF preview, since the browser was
+// decoding multi-megapixel images just to paint them at a few dozen
+// pixels.
+var THUMB_MAX_DIMENSION = 480;
+var THUMB_JPEG_QUALITY = 78;
 
 // Returns a map of Cod -> relative thumbnail path (e.g. "thumbs/AB12.jpg")
 // for use in the dashboard rows, and writes the files into thumbsDir.
@@ -60,10 +66,12 @@ export async function syncThumbnails(cfg, rows, thumbsDir) {
     try {
       var res = await fetch(sourceUrl);
       if (!res.ok) { console.log('Thumbnail fetch failed for ' + row.cod + ': HTTP ' + res.status); continue; }
-      var contentType = res.headers.get('content-type') || '';
-      var ext = extForContentType(contentType);
-      var fileName = row.cod + ext;
-      var buffer = Buffer.from(await res.arrayBuffer());
+      var rawBuffer = Buffer.from(await res.arrayBuffer());
+      var buffer = await sharp(rawBuffer)
+        .resize(THUMB_MAX_DIMENSION, THUMB_MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: THUMB_JPEG_QUALITY })
+        .toBuffer();
+      var fileName = row.cod + '.jpg';
       await fs.writeFile(path.join(thumbsDir, fileName), buffer);
       map[row.cod] = 'thumbs/' + fileName;
       downloaded++;
