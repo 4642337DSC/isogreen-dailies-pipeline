@@ -98,13 +98,16 @@ export async function fetchFacebookDailyViews(cfg, start, end) {
   return fetchFacebookDayMetric(cfg, 'page_video_views', start, end, 'sum');
 }
 
-// --- Facebook: Page-level "page_fans" time-series insight ---
-// Total Page like/follower count as of each day - a real day-by-day
-// history, not just a snapshot from whenever tracking started. Used by
-// scripts/backfill-follower-history.js to backfill the Follower Snapshots
-// database.
+// --- Facebook: Page-level "page_follows" time-series insight ---
+// Total Page follower count as of each day - a real day-by-day history,
+// not just a snapshot from whenever tracking started. "page_fans" (the
+// older "Page Likes" metric name) is rejected outright by the API for this
+// Page - "(#100) The value must be a valid insights metric" - since Meta's
+// "new Pages experience" (already required elsewhere in this file for the
+// Page-scoped access token) replaced Likes with Followers and renamed the
+// underlying metric to match. Used by scripts/backfill-follower-history.js.
 export async function fetchFacebookDailyFollowers(cfg, start, end) {
-  return fetchFacebookDayMetric(cfg, 'page_fans', start, end, 'last');
+  return fetchFacebookDayMetric(cfg, 'page_follows', start, end, 'last');
 }
 
 export async function syncFacebookMonthly(cfg, oldestDate) {
