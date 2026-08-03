@@ -42,15 +42,20 @@ jobs:
       # pushing files onto the server, publish the built output to a small
       # public repo that a cPanel cron job on the server pulls from - that
       # direction (server -> github.com) isn't blocked.
+      #
+      # Clones the existing repo and overlays this run's dist/clients/ on
+      # top rather than wiping and replacing it wholesale - a thumbnails-
+      # only backfill run doesn't rebuild index.html, and force-pushing a
+      # fresh tree each time would delete it from the public repo.
       - name: Publish built dashboard to public output repo
-        working-directory: dist/clients/isogreen
         run: |
-          git init -q -b main
+          git clone -q "https://x-access-token:${DASHBOARD_REPO_PAT}@github.com/4642337DSC/isogreen-dailies-dashboard.git" /tmp/dashboard-repo
+          cp -r dist/clients/. /tmp/dashboard-repo/
+          cd /tmp/dashboard-repo
           git config user.email "actions@github.com"
           git config user.name "github-actions"
           git add -A
-          git commit -q -m "Deploy dashboard $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git remote add origin "https://x-access-token:${DASHBOARD_REPO_PAT}@github.com/4642337DSC/isogreen-dailies-dashboard.git"
-          git push -q origin main --force
+          git diff --cached --quiet || git commit -q -m "Deploy dashboard $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -q origin main
         env:
           DASHBOARD_REPO_PAT: ${{ secrets.DASHBOARD_REPO_PAT }}

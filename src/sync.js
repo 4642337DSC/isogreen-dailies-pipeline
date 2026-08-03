@@ -9,11 +9,12 @@ import { syncTikTok } from './tiktok.js';
 import { syncAudience } from './audience.js';
 import { syncMonthlyViews } from './monthlyViews.js';
 import { syncThumbnails } from './thumbnails.js';
-import { buildDashboard } from './dashboard.js';
+import { buildDashboard, buildClientsIndex } from './dashboard.js';
 import { writeSyncSummary } from './summary.js';
 
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
-var DIST_DIR = path.join(__dirname, '..', 'dist', 'clients', 'isogreen');
+var CLIENTS_DIR = path.join(__dirname, '..', 'dist', 'clients');
+var DIST_DIR = path.join(CLIENTS_DIR, 'isogreen');
 
 export async function syncAllViews() {
   var cfg = getConfig();
@@ -42,6 +43,10 @@ export async function syncAllViews() {
   try {
     await buildDashboard(cfg, thumbMap, DIST_DIR);
   } catch (e) { console.log('Dashboard build failed: ' + e); }
+
+  try {
+    await buildClientsIndex(CLIENTS_DIR);
+  } catch (e) { console.log('Clients index build failed: ' + e); }
 
   await writeSyncSummary({ yt: yt, fb: fb, ig: ig, tt: tt });
 }

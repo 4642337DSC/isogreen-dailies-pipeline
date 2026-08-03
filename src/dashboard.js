@@ -120,3 +120,15 @@ export async function buildDashboard(cfg, thumbMap, outDir) {
   await fs.writeFile(path.join(outDir, 'index.html'), html, 'utf8');
   console.log('Dashboard written to ' + path.join(outDir, 'index.html'));
 }
+
+// Static picker page at /clients/ listing every client dashboard - no
+// per-client data, just a plain copy since it barely ever changes (adding a
+// client is a code change anyway, given each one needs its own Notion
+// databases and platform credentials wired up).
+export async function buildClientsIndex(clientsDir) {
+  var templatePath = new URL('../templates/ClientsIndex.html', import.meta.url);
+  var html = await fs.readFile(templatePath, 'utf8');
+  await fs.mkdir(clientsDir, { recursive: true });
+  await fs.writeFile(path.join(clientsDir, 'index.html'), html, 'utf8');
+  console.log('Clients index written to ' + path.join(clientsDir, 'index.html'));
+}

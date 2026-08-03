@@ -39,16 +39,20 @@ jobs:
           TIKTOK_SNAPSHOT_DATABASE_ID: ${{ secrets.TIKTOK_SNAPSHOT_DATABASE_ID }}
         run: npm run backfill:${{ github.event.inputs.script }}
 
+      # Overlays this run's dist/clients/ onto the existing public repo
+      # rather than replacing it wholesale - this backfill only produces
+      # thumbs/, not index.html, so a wholesale overwrite would delete the
+      # live dashboard from the public repo.
       - name: Publish built dashboard to public output repo
         if: ${{ github.event.inputs.script == 'thumbnails' }}
-        working-directory: dist/clients/isogreen
         run: |
-          git init -q -b main
+          git clone -q "https://x-access-token:${DASHBOARD_REPO_PAT}@github.com/4642337DSC/isogreen-dailies-dashboard.git" /tmp/dashboard-repo
+          cp -r dist/clients/. /tmp/dashboard-repo/
+          cd /tmp/dashboard-repo
           git config user.email "actions@github.com"
           git config user.name "github-actions"
           git add -A
-          git commit -q -m "Deploy dashboard $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git remote add origin "https://x-access-token:${DASHBOARD_REPO_PAT}@github.com/4642337DSC/isogreen-dailies-dashboard.git"
-          git push -q origin main --force
+          git diff --cached --quiet || git commit -q -m "Deploy dashboard $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -q origin main
         env:
           DASHBOARD_REPO_PAT: ${{ secrets.DASHBOARD_REPO_PAT }}
