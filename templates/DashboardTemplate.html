@@ -252,6 +252,18 @@
     color: var(--accent-ink);
     font-weight: 600;
   }
+  .date-input {
+    border: 1px solid var(--border-2);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 13px;
+    font-family: var(--font-body);
+    color-scheme: light dark;
+  }
+  .date-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .filterbar .date-sep { color: var(--muted); font-size: 13px; }
 
   /* ---------- KPI strip ---------- */
   .kpi-grid {
@@ -698,6 +710,10 @@
     <button class="chip" data-range="90" type="button" aria-pressed="false">Last 90 days</button>
     <button class="chip" data-range="365" type="button" aria-pressed="false">Last 12 months</button>
     <button class="chip" data-range="all" type="button" aria-pressed="true">All time</button>
+    <span class="flabel" style="margin-left:8px;">Custom</span>
+    <input class="date-input" id="rangeFrom" type="date" aria-label="Custom range: from date" />
+    <span class="date-sep">–</span>
+    <input class="date-input" id="rangeTo" type="date" aria-label="Custom range: to date" />
   </div>
 
   <section class="kpi-grid" id="kpiGrid" aria-label="Key totals"></section>
@@ -877,9 +893,13 @@
   var LAST_SYNCED = "__LAST_SYNCED__";
 
   /* ===================== state ===================== */
-  var state = { range: "all", sortKey: "date", sortDir: "desc", search: "" };
+  // customFrom/customTo (both null by default = "all time") take priority
+  // over the preset chips when set - either one alone is a valid open-ended
+  // range (e.g. customFrom only = "from that date through now").
+  var state = { range: "all", customFrom: null, customTo: null, sortKey: "date", sortDir: "desc", search: "" };
 
   function rangeStartDate() {
+    if (state.customFrom) return state.customFrom;
     if (state.range === "all") return null;
     var days = parseInt(state.range, 10);
     var d = new Date(LAST_SYNCED + "T00:00:00");
@@ -887,9 +907,14 @@
     return d.toISOString().slice(0, 10);
   }
 
+  function rangeEndDate() {
+    return state.customTo || null; // presets always run through "now" - no upper bound to apply
+  }
+
   function filteredData() {
     var start = rangeStartDate();
-    return DATA.filter(function (r) { return !start || r.date >= start; });
+    var end = rangeEndDate();
+    return DATA.filter(function (r) { return (!start || r.date >= start) && (!end || r.date <= end); });
   }
 
   /* ===================== render: masthead ===================== */
@@ -1224,6 +1249,7 @@
 
   function renderMonthly() {
     var start = rangeStartDate();
+    var end = rangeEndDate();
     var monthKeys = {};
     MONTHLY_PLATFORMS.forEach(function (p) {
       var m = MONTHLY_VIEWS[p.key] || {};
@@ -1232,7 +1258,10 @@
     DATA.forEach(function (r) { monthKeys[r.date.slice(0, 7)] = true; }); // also cover months with posts but no API data yet
 
     var months = Object.keys(monthKeys)
-      .filter(function (ym) { return !start || (ym + "-01") >= start.slice(0, 7) + "-01"; })
+      .filter(function (ym) {
+        return (!start || (ym + "-01") >= start.slice(0, 7) + "-01") &&
+               (!end || (ym + "-01") <= end.slice(0, 7) + "-01");
+      })
       .sort().reverse()
       .map(function (ym) {
         var rowsInMonth = DATA.filter(function (r) { return r.date.slice(0, 7) === ym; });
@@ -1535,15 +1564,47 @@
   });
 
   /* ===================== wire up controls ===================== */
+  var rangeFromInput = document.getElementById("rangeFrom");
+  var rangeToInput = document.getElementById("rangeTo");
+
+  function setActiveChip(activeBtn) {
+    Array.prototype.forEach.call(document.querySelectorAll(".chip[data-range]"), function (b) {
+      b.setAttribute("aria-pressed", b === activeBtn ? "true" : "false");
+    });
+  }
+
   Array.prototype.forEach.call(document.querySelectorAll(".chip[data-range]"), function (btn) {
     btn.addEventListener("click", function () {
       state.range = btn.dataset.range;
-      Array.prototype.forEach.call(document.querySelectorAll(".chip[data-range]"), function (b) {
-        b.setAttribute("aria-pressed", b === btn ? "true" : "false");
-      });
+      state.customFrom = null;
+      state.customTo = null;
+      rangeFromInput.value = "";
+      rangeToInput.value = "";
+      setActiveChip(btn);
       renderAll();
     });
   });
+
+  // A custom date takes over from the preset chips - neither chip nor the
+  // other date input needs a value; either bound alone is a valid
+  // open-ended range. Un-press the chips so it's clear "Custom" is active.
+  function onCustomRangeChange() {
+    state.customFrom = rangeFromInput.value || null;
+    state.customTo = rangeToInput.value || null;
+    rangeToInput.min = state.customFrom || "";
+    rangeFromInput.max = state.customTo || "";
+    if (state.customFrom || state.customTo) {
+      setActiveChip(null);
+    } else {
+      // Both custom fields cleared - fall back to "All time" rather than
+      // whatever preset chip was active before switching to custom.
+      state.range = "all";
+      setActiveChip(document.querySelector('.chip[data-range="all"]'));
+    }
+    renderAll();
+  }
+  rangeFromInput.addEventListener("change", onCustomRangeChange);
+  rangeToInput.addEventListener("change", onCustomRangeChange);
 
   document.getElementById("searchInput").addEventListener("input", function (e) {
     state.search = e.target.value;
