@@ -24,13 +24,10 @@ var headers = {
 
 var existing = await fetchJson('https://api.notion.com/v1/databases/' + cfg.MONTHLY_VIEWS_DATABASE_ID, { headers: headers });
 if (existing.object === 'error') throw new Error('Could not read the Monthly Views database: ' + existing.message);
-
-var parent = existing.parent.type === 'page_id'
-  ? { type: 'page_id', page_id: existing.parent.page_id }
-  : { type: 'workspace', workspace: true };
+console.log('Monthly Views parent: ' + JSON.stringify(existing.parent));
 
 var body = {
-  parent: parent,
+  parent: existing.parent,
   icon: { type: 'emoji', emoji: '📆' },
   title: [{ type: 'text', text: { content: 'Daily Views' } }],
   properties: {
