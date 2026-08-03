@@ -37,8 +37,18 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 .wrap { max-width: 900px; margin: 0 auto; padding: 48px 28px 64px; }
-.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 48px; flex-wrap: wrap; }
-.brand { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 13px; color: var(--muted); }
+.hero-banner {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 32px;
+  padding: 26px 28px 40px;
+  background-image: linear-gradient(180deg, rgba(13,13,13,0.55) 0%, rgba(13,13,13,0.88) 75%, rgba(13,13,13,0.98) 100%), url("../assets/background.jpg");
+  background-size: cover;
+  background-position: center;
+}
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.logo { height: 26px; display: block; }
 .generate-btn {
   border: none;
   background: var(--accent);
@@ -51,7 +61,7 @@ body {
   cursor: pointer;
 }
 .generate-btn:hover { opacity: 0.9; }
-.hero { text-align: center; margin-bottom: 48px; }
+.hero { text-align: center; margin-top: 40px; }
 .hero-title { font-family: var(--font-display); font-weight: 700; font-size: 56px; letter-spacing: -0.02em; margin: 0 0 6px; }
 .hero-sub { font-size: 15px; color: var(--ink-2); margin: 0 0 4px; }
 .hero-client { font-size: 15px; color: var(--muted); }
@@ -60,14 +70,18 @@ body {
 .card-hint { font-size: 11.5px; color: var(--muted); margin-bottom: 14px; margin-top: -10px; }
 table { border-collapse: collapse; width: 100%; }
 th, td { padding: 9px 10px; text-align: right; font-size: 13.5px; border-bottom: 1px solid var(--border); }
-th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2) { text-align: left; }
+th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2), th:nth-child(3), td:nth-child(3) { text-align: left; }
 th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
 td.name-cell { color: var(--ink); }
 td.total-cell { font-family: var(--font-mono); font-weight: 700; font-variant-numeric: tabular-nums; }
 td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.thumb-cell { width: 52px; }
+.thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; display: block; background: var(--surface-2); }
+.thumb-empty { width: 44px; height: 44px; border-radius: 6px; background: var(--surface-2); }
 .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .stat-item { display: flex; align-items: center; gap: 10px; }
-.stat-badge { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex: none; font-family: var(--font-display); font-weight: 700; font-size: 11px; color: #fff; }
+.stat-badge { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex: none; overflow: hidden; }
+.stat-badge svg { width: 100%; height: 100%; }
 .stat-value { font-family: var(--font-mono); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
 .stat-input {
   font-family: var(--font-mono); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums;
@@ -87,7 +101,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 8
 footer a { color: var(--accent); }
 .caveat { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 28px; max-width: 620px; margin-left: auto; margin-right: auto; }
 @media print {
-  body { background: #fff; color: #000; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .card { break-inside: avoid; }
   .no-print { display: none !important; }
   .stat-input, .comments-input { border-color: #999; }
@@ -95,23 +109,36 @@ footer a { color: var(--accent); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="toolbar">
-    <div class="brand">__CLIENT_NAME__</div>
-    <button class="generate-btn no-print" type="button" onclick="window.print()">Generate PDF</button>
-  </div>
 
-  <div class="hero">
-    <div class="hero-title">Deviz</div>
-    <div class="hero-sub">__COD__ · __MONTH_LABEL__</div>
-    <div class="hero-client">__CLIENT_NAME__</div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="igGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#405DE6" />
+      <stop offset="35%" stop-color="#833AB4" />
+      <stop offset="65%" stop-color="#E1306C" />
+      <stop offset="100%" stop-color="#F77737" />
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <div class="hero-banner">
+    <div class="toolbar">
+      <img class="logo" src="../assets/logo.png" alt="__CLIENT_NAME__">
+      <button class="generate-btn no-print" type="button" onclick="window.print()">Exportă ca PDF</button>
+    </div>
+    <div class="hero">
+      <div class="hero-title">Deviz</div>
+      <div class="hero-sub">__COD__ · __MONTH_LABEL__</div>
+      <div class="hero-client">__CLIENT_NAME__</div>
+    </div>
   </div>
 
   <div class="card">
     <div class="card-title">Materiale postate — __MONTH_NAME_RO__</div>
     <table>
       <thead>
-        <tr><th>Cod</th><th>Nume</th><th>Data postare</th><th>Facebook</th><th>Instagram</th><th>TikTok</th><th>YouTube</th><th>Total</th></tr>
+        <tr><th></th><th>Cod</th><th>Nume</th><th>Data postare</th><th>Facebook</th><th>Instagram</th><th>TikTok</th><th>YouTube</th><th>Total</th></tr>
       </thead>
       <tbody>
 /*__VIDEO_ROWS_HTML__*/

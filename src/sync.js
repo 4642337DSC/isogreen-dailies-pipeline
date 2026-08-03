@@ -11,7 +11,6 @@ import { syncMonthlyViews } from './monthlyViews.js';
 import { syncDailyViews } from './dailyViews.js';
 import { syncThumbnails } from './thumbnails.js';
 import { buildDashboard, buildClientsIndex } from './dashboard.js';
-import { buildReports } from './reports.js';
 import { writeSyncSummary } from './summary.js';
 
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -62,16 +61,15 @@ export async function syncAllViews() {
     await syncDailyViews(cfg, { fbEnabled: fbEnabled, ytEnabled: ytEnabled });
   } catch (e) { console.log('Daily views sync failed: ' + e); }
 
-  var dashboardData = null;
   try {
-    dashboardData = await buildDashboard(cfg, thumbMap, DIST_DIR);
+    await buildDashboard(cfg, thumbMap, DIST_DIR);
   } catch (e) { console.log('Dashboard build failed: ' + e); }
 
-  if (dashboardData) {
-    try {
-      await buildReports(cfg, dashboardData, DIST_DIR);
-    } catch (e) { console.log('Reports build failed: ' + e); }
-  }
+  // Monthly reports are generated on demand (see scripts/generate-report.js
+  // + the "Generate report" GitHub Actions workflow), not automatically
+  // here - they're reviewed and edited by hand (TikTok figure, comments)
+  // before being printed, so rebuilding all of them on every sync would
+  // overwrite those edits and has no upside.
 
   try {
     await buildClientsIndex(CLIENTS_DIR);

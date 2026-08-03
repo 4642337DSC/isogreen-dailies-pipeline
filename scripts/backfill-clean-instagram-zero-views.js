@@ -15,11 +15,18 @@ import { queryNotionDatabase, archiveNotionPage } from '../src/notion.js';
 // measurement to plot - so these rows need to disappear entirely, not just
 // change value, for the chart to stop showing Instagram flatlined at zero
 // through this whole stretch.
-var CUTOFF = '2025-08-01'; // first month with real Instagram views data
+// Daily-level check (via a raw API dump per date) found the metric actually
+// stays at a real, explicit 0 through 2025-08-23 and only starts producing
+// genuine non-zero values on 2025-08-24 - refined from the original
+// month-level guess of "2025-08-01" once the flat stretch was spotted on
+// the dashboard's Daily Views chart running a few days into what looked
+// like real data. Monthly Views keeps the coarser 2025-08-01 cutoff since
+// August's monthly aggregate (all from real days 24-31) isn't misleading
+// the way a flatlined daily chart is.
 var cfg = getConfig();
 if (!cfg.NOTION_TOKEN) throw new Error('Set NOTION_TOKEN first.');
 
-async function archiveMatching(databaseId, dateProperty, label) {
+async function archiveMatching(databaseId, dateProperty, label, cutoff) {
   if (!databaseId) { console.log(label + ' database not configured - skipping.'); return; }
   var archived = 0;
   var cursor = null;
@@ -28,7 +35,7 @@ async function archiveMatching(databaseId, dateProperty, label) {
       filter: {
         and: [
           { property: 'Platform', select: { equals: 'Instagram' } },
-          { property: dateProperty, date: { before: CUTOFF } }
+          { property: dateProperty, date: { before: cutoff } }
         ]
       },
       page_size: 100
@@ -42,10 +49,10 @@ async function archiveMatching(databaseId, dateProperty, label) {
     }
     cursor = data.has_more ? data.next_cursor : null;
   } while (cursor);
-  console.log('Archived ' + archived + ' Instagram row(s) from ' + label + ' (before ' + CUTOFF + ').');
+  console.log('Archived ' + archived + ' Instagram row(s) from ' + label + ' (before ' + cutoff + ').');
 }
 
-await archiveMatching(cfg.DAILY_VIEWS_DATABASE_ID, 'Date', 'Daily Views');
-await archiveMatching(cfg.MONTHLY_VIEWS_DATABASE_ID, 'Month', 'Monthly Views');
+await archiveMatching(cfg.DAILY_VIEWS_DATABASE_ID, 'Date', 'Daily Views', '2025-08-24');
+await archiveMatching(cfg.MONTHLY_VIEWS_DATABASE_ID, 'Month', 'Monthly Views', '2025-08-01');
 
 console.log('Instagram false-zero cleanup complete.');
