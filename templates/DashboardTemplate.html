@@ -517,6 +517,19 @@
     max-width: 100%;
   }
   .search-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .table-more { display: flex; justify-content: center; margin-top: 14px; }
+  .show-more-btn {
+    border: 1px solid var(--border-2);
+    background: var(--surface);
+    color: var(--ink-2);
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+  .show-more-btn:hover { background: var(--surface-2); color: var(--ink); }
+  .show-more-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
   table { border-collapse: collapse; width: 100%; table-layout: auto; }
   thead th {
@@ -761,6 +774,7 @@
         <tbody id="tbody"></tbody>
       </table>
     </div>
+    <div class="table-more" id="tableMore"></div>
   </section>
 
   <footer>
@@ -788,11 +802,14 @@
   "use strict";
 
   /* ===================== DATA ===================== */
-  // [name, cod, youtube, facebook, instagram, tiktok, postDate, instagramLink, transcript, thumbUrl]
+  // [name, cod, youtube, facebook, instagram, tiktok, postDate, link, transcript, thumbUrl]
+  // "link" is already resolved server-side to the best available platform
+  // URL (Instagram preferred, falling back to YouTube/Facebook/TikTok) -
+  // see fetchDashboardRows in src/dashboard.js.
   var RAW = /*__RAW_DATA__*/;
 
   var DATA = RAW.map(function (r) {
-    return { name: r[0], cod: r[1], yt: r[2], fb: r[3], ig: r[4], tt: r[5], date: r[6], igLink: r[7], transcript: r[8], thumb: r[9] };
+    return { name: r[0], cod: r[1], yt: r[2], fb: r[3], ig: r[4], tt: r[5], date: r[6], link: r[7], transcript: r[8], thumb: r[9] };
   });
 
   // Account-level follower counts, from the "📊 Channel Stats" Notion database
@@ -905,7 +922,8 @@
   // customFrom/customTo (both null by default = "all time") take priority
   // over the preset chips when set - either one alone is a valid open-ended
   // range (e.g. customFrom only = "from that date through now").
-  var state = { range: "all", customFrom: null, customTo: null, sortKey: "date", sortDir: "desc", search: "" };
+  var state = { range: "all", customFrom: null, customTo: null, sortKey: "date", sortDir: "desc", search: "", tableLimit: 5 };
+  var TABLE_PAGE_STEPS = [5, 15, Infinity]; // initial view, "Show more" (+10), "Show all"
 
   function rangeStartDate() {
     if (state.customFrom) return state.customFrom;
@@ -1462,11 +1480,9 @@
       });
     }
     var STRING_SORT_KEYS = ["name", "link", "transcript"];
-    var SORT_FIELD = { link: "igLink" }; // COLUMNS key -> DATA field, where they differ
     function sortKeyOf(r) {
       if (state.sortKey === "total") return null; // handled separately below
-      var field = SORT_FIELD[state.sortKey] || state.sortKey;
-      var v = r[field];
+      var v = r[state.sortKey];
       if (STRING_SORT_KEYS.indexOf(state.sortKey) !== -1) return v ? String(v).toLowerCase() : "";
       return v === null || v === undefined ? -1 : v;
     }
@@ -1490,7 +1506,13 @@
 
     var tbody = document.getElementById("tbody");
     tbody.textContent = "";
-    document.getElementById("tableNote").textContent = withTotal.length.toLocaleString("en-US") + " of " + DATA.length.toLocaleString("en-US") + " shorts shown";
+
+    var visible = withTotal.slice(0, state.tableLimit);
+    document.getElementById("tableNote").textContent = withTotal.length === visible.length
+      ? withTotal.length.toLocaleString("en-US") + " of " + DATA.length.toLocaleString("en-US") + " shorts shown"
+      : "Showing " + visible.length.toLocaleString("en-US") + " of " + withTotal.length.toLocaleString("en-US") + " matching shorts";
+
+    renderTableMore(withTotal.length);
 
     if (withTotal.length === 0) {
       var trEmpty = document.createElement("tr");
@@ -1503,7 +1525,7 @@
       return;
     }
 
-    withTotal.forEach(function (item) {
+    visible.forEach(function (item) {
       var r = item.r;
       var tr = document.createElement("tr");
 
@@ -1542,14 +1564,14 @@
 
       var tdLink = document.createElement("td");
       tdLink.className = "link-cell";
-      if (r.igLink) {
+      if (r.link) {
         var a = document.createElement("a");
-        a.href = r.igLink;
+        a.href = r.link;
         a.target = "_blank";
         a.rel = "noopener noreferrer";
         a.textContent = "↗";
-        a.title = "Open on Instagram";
-        a.setAttribute("aria-label", "Open " + r.name.trim() + " on Instagram");
+        a.title = "Open short";
+        a.setAttribute("aria-label", "Open " + r.name.trim());
         tdLink.appendChild(a);
       } else {
         tdLink.className += " muted-cell";
@@ -1581,6 +1603,29 @@
       tr.appendChild(tdLink); tr.appendChild(tdTranscript);
       tbody.appendChild(tr);
     });
+  }
+
+  // "Show more" (+10) then "Show all", based on where state.tableLimit
+  // currently sits in TABLE_PAGE_STEPS - matches the current filtered/
+  // searched total (matchedCount), not the full unfiltered DATA set.
+  function renderTableMore(matchedCount) {
+    var wrap = document.getElementById("tableMore");
+    wrap.textContent = "";
+    if (state.tableLimit >= matchedCount) return;
+
+    var stepIdx = TABLE_PAGE_STEPS.indexOf(state.tableLimit);
+    var nextLimit = TABLE_PAGE_STEPS[stepIdx + 1];
+    if (nextLimit === undefined) return;
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "show-more-btn";
+    btn.textContent = nextLimit === Infinity ? "Show all" : "Show more";
+    btn.addEventListener("click", function () {
+      state.tableLimit = nextLimit;
+      renderTable();
+    });
+    wrap.appendChild(btn);
   }
 
   /* ===================== transcript modal ===================== */
@@ -1621,6 +1666,7 @@
       state.range = btn.dataset.range;
       state.customFrom = null;
       state.customTo = null;
+      state.tableLimit = TABLE_PAGE_STEPS[0];
       rangeFromInput.value = "";
       rangeToInput.value = "";
       setActiveChip(btn);
@@ -1634,6 +1680,7 @@
   function onCustomRangeChange() {
     state.customFrom = rangeFromInput.value || null;
     state.customTo = rangeToInput.value || null;
+    state.tableLimit = TABLE_PAGE_STEPS[0];
     rangeToInput.min = state.customFrom || "";
     rangeFromInput.max = state.customTo || "";
     if (state.customFrom || state.customTo) {
@@ -1651,6 +1698,7 @@
 
   document.getElementById("searchInput").addEventListener("input", function (e) {
     state.search = e.target.value;
+    state.tableLimit = TABLE_PAGE_STEPS[0];
     renderTable();
   });
 

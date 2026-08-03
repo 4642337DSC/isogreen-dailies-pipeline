@@ -15,7 +15,7 @@ export function platformKey(platformName) {
   }
 }
 
-// Reads the fields the dashboard needs (view counts, Instagram URL,
+// Reads the fields the dashboard needs (view counts, per-platform URLs,
 // transcript) that the sync path's parseNotionRow doesn't - kept separate
 // so the sync path isn't carrying fields it never uses.
 export async function fetchDashboardRows(cfg, thumbMap) {
@@ -40,6 +40,15 @@ export async function fetchDashboardRows(cfg, thumbMap) {
       if (!postDate) return; // dashboard places every short in time - skip anything without a post date
       var name = (props['Name'].title || []).map(function (t) { return t.plain_text; }).join('').trim();
       var cod = richTextToString(props['Cod']);
+      // The table's "Link" column should always have something to click if
+      // any platform posted it - Instagram preferred (it's the richest
+      // permalink target), falling back to whichever other platform URL is
+      // actually on file for this row.
+      var igLink = props['Instagram URL'] ? props['Instagram URL'].url : null;
+      var ytLink = props['YouTube URL'] ? props['YouTube URL'].url : null;
+      var fbLink = props['Facebook URL'] ? props['Facebook URL'].url : null;
+      var ttLink = props['TikTok URL'] ? props['TikTok URL'].url : null;
+      var link = igLink || ytLink || fbLink || ttLink || null;
       out.push([
         name,
         cod,
@@ -48,7 +57,7 @@ export async function fetchDashboardRows(cfg, thumbMap) {
         props['Instagram'].number,
         props['TikTok'].number,
         postDate,
-        props['Instagram URL'] ? props['Instagram URL'].url : null,
+        link,
         richTextToString(props['Transcript']) || null,
         thumbMap[cod] || null
       ]);
