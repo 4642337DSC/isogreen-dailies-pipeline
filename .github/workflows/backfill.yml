@@ -16,6 +16,7 @@ on:
           - create-follower-snapshots-db
           - fix-facebook-daily
           - follower-history
+          - debug-ig-views
 
 jobs:
   backfill:

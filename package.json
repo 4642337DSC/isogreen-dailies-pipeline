@@ -13,7 +13,8 @@
     "backfill:daily-views": "node scripts/backfill-daily-views.js",
     "backfill:create-follower-snapshots-db": "node scripts/backfill-create-follower-snapshots-db.js",
     "backfill:fix-facebook-daily": "node scripts/backfill-fix-facebook-daily.js",
-    "backfill:follower-history": "node scripts/backfill-follower-history.js"
+    "backfill:follower-history": "node scripts/backfill-follower-history.js",
+    "backfill:debug-ig-views": "node scripts/debug-ig-views.js"
   },
   "dependencies": {},
   "engines": {
