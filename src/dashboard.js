@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { queryNotionDatabase, richTextToString } from './notion.js';
+import { queryNotionDatabase, richTextToString, buildShortsFilter } from './notion.js';
 import { isoDate } from './util.js';
 
 // "YouTube"/"Facebook"/"Instagram"/"TikTok" (as stored in the Channel Stats
@@ -15,6 +15,31 @@ export function platformKey(platformName) {
   }
 }
 
+export function buildDashboardRow(cfg, page, thumbMap) {
+  var props = page.properties;
+  var postDate = props['Data Postare'] && props['Data Postare'].date ? props['Data Postare'].date.start : null;
+  if (!postDate) return null; // dashboard places every short in time - skip anything without a post date
+  var name = (props['Name'].title || []).map(function (t) { return t.plain_text; }).join('').trim();
+  var cod = richTextToString(props['Cod']);
+  var igLink = props['Instagram URL'] ? props['Instagram URL'].url : null;
+  var ytLink = props['YouTube URL'] ? props['YouTube URL'].url : null;
+  var fbLink = props['Facebook URL'] ? props['Facebook URL'].url : null;
+  var ttLink = props['TikTok URL'] ? props['TikTok URL'].url : null;
+  var link = igLink || ytLink || fbLink || ttLink || null;
+  return [
+    name,
+    cod,
+    props[cfg.YT_FIELD_NAME].number,
+    props[cfg.FB_FIELD_NAME].number,
+    props[cfg.IG_FIELD_NAME].number,
+    props[cfg.TT_FIELD_NAME].number,
+    postDate,
+    link,
+    richTextToString(props['Transcript']) || null,
+    thumbMap[cod] || null
+  ];
+}
+
 // Reads the fields the dashboard needs (view counts, per-platform URLs,
 // transcript) that the sync path's parseNotionRow doesn't - kept separate
 // so the sync path isn't carrying fields it never uses.
@@ -24,43 +49,14 @@ export async function fetchDashboardRows(cfg, thumbMap) {
   do {
     var payload = {
       page_size: 100,
-      filter: {
-        and: [
-          { property: 'Tip', multi_select: { contains: 'Short' } },
-          { property: 'Postat?', checkbox: { equals: true } }
-        ]
-      }
+      filter: buildShortsFilter(cfg)
     };
     if (cursor) payload.start_cursor = cursor;
     var data = await queryNotionDatabase(cfg, cfg.NOTION_DATABASE_ID, payload);
     if (data.object === 'error') throw new Error('Notion query failed: ' + data.message);
     (data.results || []).forEach(function (page) {
-      var props = page.properties;
-      var postDate = props['Data Postare'] && props['Data Postare'].date ? props['Data Postare'].date.start : null;
-      if (!postDate) return; // dashboard places every short in time - skip anything without a post date
-      var name = (props['Name'].title || []).map(function (t) { return t.plain_text; }).join('').trim();
-      var cod = richTextToString(props['Cod']);
-      // The table's "Link" column should always have something to click if
-      // any platform posted it - Instagram preferred (it's the richest
-      // permalink target), falling back to whichever other platform URL is
-      // actually on file for this row.
-      var igLink = props['Instagram URL'] ? props['Instagram URL'].url : null;
-      var ytLink = props['YouTube URL'] ? props['YouTube URL'].url : null;
-      var fbLink = props['Facebook URL'] ? props['Facebook URL'].url : null;
-      var ttLink = props['TikTok URL'] ? props['TikTok URL'].url : null;
-      var link = igLink || ytLink || fbLink || ttLink || null;
-      out.push([
-        name,
-        cod,
-        props['YouTube'].number,
-        props['Facebook'].number,
-        props['Instagram'].number,
-        props['TikTok'].number,
-        postDate,
-        link,
-        richTextToString(props['Transcript']) || null,
-        thumbMap[cod] || null
-      ]);
+      var row = buildDashboardRow(cfg, page, thumbMap);
+      if (row) out.push(row);
     });
     cursor = data.has_more ? data.next_cursor : null;
   } while (cursor);
@@ -171,7 +167,7 @@ export async function buildDashboard(cfg, thumbMap, outDir) {
     .replace('/*__DAILY_VIEWS_DATA__*/', JSON.stringify(daily))
     .replace('/*__FOLLOWER_SNAPSHOTS_DATA__*/', JSON.stringify(followerSnapshots))
     .replace('__LAST_SYNCED__', isoDate(new Date()))
-    .split('__CLIENT_NAME__').join('ISOGREEN');
+    .split('__CLIENT_NAME__').join(cfg.CLIENT_NAME);
 
   await fs.mkdir(outDir, { recursive: true });
   await fs.writeFile(path.join(outDir, 'index.html'), html, 'utf8');
