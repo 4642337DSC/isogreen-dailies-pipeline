@@ -126,7 +126,7 @@ table { border-collapse: collapse; width: 100%; table-layout: fixed; }
    title still reads fine, but a wrapped date or number (e.g. a comma
    count fragmenting mid-digit) does not, so every other column is
    nowrap and gets enough width up front instead. */
-th, td { padding: 9px 8px; text-align: right; font-size: 13.5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th, td { padding: 9px 6px; text-align: right; font-size: 12.5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 th:nth-child(3), td.name-cell { white-space: normal; overflow-wrap: break-word; }
 th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2), th:nth-child(3), td:nth-child(3) { text-align: left; }
 th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.02em; }
@@ -144,11 +144,12 @@ td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: v
    only one allowed to wrap; the five view-count columns (Facebook /
    Instagram / TikTok / YouTube / Total) are sized equal and wide enough
    for a 6-7 digit comma-formatted number on one line. Sums to 100%. */
-th:nth-child(1), td:nth-child(1) { width: 10%; }
-th:nth-child(2), td:nth-child(2) { width: 6%; }
+th:nth-child(1), td:nth-child(1) { width: 9%; }
+th:nth-child(2), td:nth-child(2) { width: 9%; }
 th:nth-child(3), td:nth-child(3) { width: 19%; }
-th:nth-child(4), td:nth-child(4) { width: 9%; }
-th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6), th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8), th:nth-child(9), td:nth-child(9) { width: 11.2%; }
+th:nth-child(4), td:nth-child(4) { width: 12%; }
+th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { width: 10.5%; }
+th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8), th:nth-child(9), td:nth-child(9) { width: 10%; }
 /* Sized to fill its cell (up to 90px) rather than a fixed 90px, so it
    shrinks along with the thumb-cell's own 11% on narrower print widths
    instead of overflowing it. */
