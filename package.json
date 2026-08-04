@@ -14,7 +14,8 @@
     "backfill:create-follower-snapshots-db": "node scripts/backfill-create-follower-snapshots-db.js",
     "backfill:fix-facebook-daily": "node scripts/backfill-fix-facebook-daily.js",
     "backfill:follower-history": "node scripts/backfill-follower-history.js",
-    "backfill:clean-instagram-zero-views": "node scripts/backfill-clean-instagram-zero-views.js"
+    "backfill:clean-instagram-zero-views": "node scripts/backfill-clean-instagram-zero-views.js",
+    "backfill:clean-facebook-zero-views": "node scripts/backfill-clean-facebook-zero-views.js"
   },
   "dependencies": {
     "sharp": "^0.35.3"

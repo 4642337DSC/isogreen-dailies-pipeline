@@ -229,6 +229,13 @@
   .audience-item { display: flex; align-items: center; gap: 7px; }
   .audience-value { font-family: var(--font-mono); font-weight: 600; font-size: 14.5px; font-variant-numeric: tabular-nums; }
   .audience-label { font-size: 12px; color: var(--muted); }
+  @media (max-width: 860px) {
+    /* Without this, flex-wrap lets the first platform item (whichever
+       fits) share a row with the "Audience" label instead of wrapping
+       together with the rest - forcing the label onto its own line keeps
+       all platform items together starting on the next row. */
+    .audience-eyebrow { flex-basis: 100%; margin-right: 0; margin-bottom: 2px; }
+  }
 
   /* ---------- filter row ---------- */
   .filterbar {
@@ -592,7 +599,11 @@
   }
   .show-more-btn:hover { background: var(--surface-2); color: var(--ink); }
   .show-more-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .table-scroll { overflow-x: visible; border: 1px solid var(--border); border-radius: 10px; }
+  /* The table's 10 nowrap-cell columns are always wider than a mobile
+     viewport - auto (not visible) keeps the horizontal scroll contained to
+     this box instead of blowing out the whole page's layout. */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 10px; }
+  table { min-width: 720px; }
   table { border-collapse: collapse; width: 100%; table-layout: auto; }
   thead th {
     position: sticky; top: 0;
@@ -1587,28 +1598,19 @@
   var MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
   // Monthly totals come from each platform's own Analytics/Insights API
-  // (MONTHLY_VIEWS, synced daily into the "📅 Monthly Views" Notion database) —
-  // NOT summed from the views of shorts posted that month. That distinction
-  // matters: a month's real views include ongoing traffic on older posts,
-  // not just what was published in that window. The one exception is months
-  // that predate API tracking entirely (no platform has data yet), where
-  // this falls back to summing that month's posted shorts and marks the
-  // total with "*" so it's not confused with a real API figure.
-  // Monthly Breakdown only ever covers platforms with a real (or at least
-  // per-video-summable) monthly signal - YouTube + Instagram + Facebook.
-  // TikTok has no monthly API at all (its old snapshot-derived estimate was
-  // removed as unreliable) and waits until a real monthly source exists.
-  var MONTHLY_PLATFORMS = PLATFORMS.filter(function (p) { return p.key === "yt" || p.key === "fb" || p.key === "ig"; });
+  // (summed straight from each short's own view counts, across every
+  // platform it was posted to) - i.e. "how many views have this month's
+  // shorts accumulated to date", not "how many views did the account get
+  // during this calendar month" (which would also include ongoing traffic
+  // on older posts, and used to come from MONTHLY_VIEWS' per-platform API
+  // totals before this was simplified to the more intuitive per-video sum).
+  var MONTHLY_PLATFORMS = PLATFORMS;
 
   function renderMonthly() {
     var start = rangeStartDate();
     var end = rangeEndDate();
     var monthKeys = {};
-    MONTHLY_PLATFORMS.forEach(function (p) {
-      var m = MONTHLY_VIEWS[p.key] || {};
-      Object.keys(m).forEach(function (ym) { monthKeys[ym] = true; });
-    });
-    DATA.forEach(function (r) { monthKeys[r.date.slice(0, 7)] = true; }); // also cover months with posts but no API data yet
+    DATA.forEach(function (r) { monthKeys[r.date.slice(0, 7)] = true; });
 
     var months = Object.keys(monthKeys)
       .filter(function (ym) {
@@ -1617,21 +1619,12 @@
       })
       .map(function (ym) {
         var rowsInMonth = DATA.filter(function (r) { return r.date.slice(0, 7) === ym; });
-        var apiTotal = 0, hasApiData = false;
+        var monthTotal = rowsInMonth.reduce(function (sum, r) { return sum + total(r); }, 0);
         var platformsWithData = {};
-        MONTHLY_PLATFORMS.forEach(function (p) {
-          var v = MONTHLY_VIEWS[p.key] && MONTHLY_VIEWS[p.key][ym];
-          if (typeof v === "number") { apiTotal += v; hasApiData = true; platformsWithData[p.key] = true; }
+        rowsInMonth.forEach(function (r) {
+          MONTHLY_PLATFORMS.forEach(function (p) { if (r[p.key] !== null) platformsWithData[p.key] = true; });
         });
-        var estimated = false;
-        if (!hasApiData) {
-          apiTotal = rowsInMonth.reduce(function (sum, r) { return sum + (r.yt || 0) + (r.fb || 0) + (r.ig || 0); }, 0);
-          estimated = true;
-          rowsInMonth.forEach(function (r) {
-            MONTHLY_PLATFORMS.forEach(function (p) { if (r[p.key] !== null) platformsWithData[p.key] = true; });
-          });
-        }
-        return { ym: ym, rows: rowsInMonth, total: apiTotal, estimated: estimated, platformsWithData: platformsWithData };
+        return { ym: ym, rows: rowsInMonth, total: monthTotal, platformsWithData: platformsWithData };
       });
 
     months.sort(function (a, b) {
@@ -1646,7 +1639,7 @@
 
     var wrap = document.getElementById("monthList");
     wrap.textContent = "";
-    document.getElementById("monthlyNote").textContent = months.length + " month" + (months.length === 1 ? "" : "s") + " in range — views via each platform's own API";
+    document.getElementById("monthlyNote").textContent = months.length + " month" + (months.length === 1 ? "" : "s") + " in range — total views of shorts posted that month";
 
     months.forEach(function (m, idx) {
       var parts = m.ym.split("-");
@@ -1669,8 +1662,8 @@
 
       var tot = document.createElement("span");
       tot.className = "month-total";
-      tot.textContent = fmtCompact(m.total) + (m.estimated ? "*" : "");
-      tot.title = fmtFull(m.total) + (m.estimated ? " (estimated from shorts posted this month — no API data yet for this month)" : " (from each platform's own API)");
+      tot.textContent = fmtCompact(m.total);
+      tot.title = fmtFull(m.total) + " (total views of shorts posted this month, summed across platforms)";
 
       var top = document.createElement("div");
       top.className = "month-summary-top";

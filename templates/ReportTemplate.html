@@ -62,6 +62,18 @@ body {
   margin-left: auto;
 }
 .generate-btn:hover { opacity: 0.9; }
+.back-btn {
+  border: 1px solid var(--border-2);
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+.back-btn:hover { background: var(--surface-2); }
 .hero-banner {
   position: relative;
   border-radius: 16px;
@@ -160,6 +172,7 @@ footer a { color: var(--accent); }
 
 <div class="wrap">
   <div class="picker no-print">
+    <a class="back-btn" href="../">← Dashboard</a>
     <label for="yearSelect">An</label>
     <select id="yearSelect"></select>
     <label for="monthSelect">Lună</label>

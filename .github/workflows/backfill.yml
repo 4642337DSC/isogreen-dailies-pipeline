@@ -17,6 +17,7 @@ on:
           - fix-facebook-daily
           - follower-history
           - clean-instagram-zero-views
+          - clean-facebook-zero-views
 
 jobs:
   backfill:
