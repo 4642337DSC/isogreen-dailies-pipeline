@@ -15,8 +15,8 @@
 @page { size: A4; }
 :root {
   --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-2: #f0efe8;
+  --surface: #f5f4f0;
+  --surface-2: #ebe9e2;
   --ink: #1a1a17;
   --ink-2: #52514a;
   --muted: #8a8880;
@@ -80,17 +80,22 @@ body {
   padding: 26px 28px 40px;
 }
 /* The background photo lives in its own clipped/rounded layer, separate
-   from the text sitting on top of it. Chrome's PDF export rasterizes an
-   overflow:hidden + border-radius box as a flat bitmap to apply the
-   clip - when the text was inside that same box, it got flattened into
-   the bitmap too and came out pixelated. Keeping text in an unclipped
-   sibling on top means only the photo gets rasterized, not the type. */
+   from the text sitting on top of it, and as a real <img> element rather
+   than a CSS background-image - Chrome's PDF export embeds <img> content
+   more reliably than a background-image layer, which in some cases gets
+   flattened into a bitmap that also swallows anything painted in the
+   same screen region, including overlapping text. */
 .hero-banner-bg {
   position: absolute; inset: 0; z-index: 0;
   border-radius: 16px; overflow: hidden;
-  background-image: linear-gradient(180deg, rgba(13,13,13,0.55) 0%, rgba(13,13,13,0.88) 75%, rgba(13,13,13,0.98) 100%), url("assets/background.jpg");
-  background-size: cover;
-  background-position: center;
+}
+.hero-banner-bg img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+.hero-banner-bg::after {
+  content: ""; position: absolute; inset: 0;
+  background-image: linear-gradient(180deg, rgba(13,13,13,0.55) 0%, rgba(13,13,13,0.88) 75%, rgba(13,13,13,0.98) 100%);
 }
 .brand-badge {
   position: absolute; z-index: 1; top: 20px; right: 24px; width: 92px; height: 92px;
@@ -109,16 +114,31 @@ body {
 }
 .card-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin-bottom: 14px; }
 .card-hint { font-size: 11.5px; color: var(--muted); margin-bottom: 14px; margin-top: -10px; }
-table { border-collapse: collapse; width: 100%; }
-th, td { padding: 9px 10px; text-align: right; font-size: 13.5px; border-bottom: 1px solid var(--border); }
+/* table-layout: auto (the default) sizes columns by natural content
+   width, which on the desktop-width design (900px) comfortably fits a
+   90px thumbnail + 8 more columns - but A4 print width is much narrower,
+   so the same natural widths added up to more than the page and pushed
+   the last column (Total) off the printable area. Fixed layout with
+   explicit percentages guarantees every column - including Total -
+   always stays within 100% of whatever width is actually available. */
+table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+th, td { padding: 9px 8px; text-align: right; font-size: 13.5px; border-bottom: 1px solid var(--border); overflow-wrap: break-word; }
 th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2), th:nth-child(3), td:nth-child(3) { text-align: left; }
 th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
 td.name-cell { color: var(--ink); }
 td.total-cell { font-family: var(--font-mono); font-weight: 700; font-variant-numeric: tabular-nums; }
 td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
-.thumb-cell { width: 100px; }
-.thumb { width: 90px; height: 160px; object-fit: cover; border-radius: 8px; display: block; background: var(--surface-2); }
-.thumb-empty { width: 90px; height: 160px; border-radius: 8px; background: var(--surface-2); }
+.thumb-cell { width: 11%; }
+th:nth-child(2), td:nth-child(2) { width: 7%; }
+th:nth-child(3), td:nth-child(3) { width: 24%; }
+th:nth-child(4), td:nth-child(4) { width: 10%; }
+th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6), th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8) { width: 10%; }
+th:nth-child(9), td:nth-child(9) { width: 9%; }
+/* Sized to fill its cell (up to 90px) rather than a fixed 90px, so it
+   shrinks along with the thumb-cell's own 11% on narrower print widths
+   instead of overflowing it. */
+.thumb { width: 100%; max-width: 90px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 8px; display: block; background: var(--surface-2); }
+.thumb-empty { width: 100%; max-width: 90px; aspect-ratio: 9 / 16; border-radius: 8px; background: var(--surface-2); }
 .empty-row td { text-align: center; color: var(--muted); padding: 22px 10px; }
 .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .stat-item { display: flex; align-items: center; gap: 10px; }
@@ -156,6 +176,14 @@ footer a { color: var(--accent); }
 .caveat { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 28px; max-width: 620px; margin-left: auto; margin-right: auto; }
 @media print {
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* The page is designed at 900px wide for the on-screen app, but A4's
+     printable width is narrower (~720-790px depending on the browser's
+     own default margins) - left at 900px, Chrome has to auto-scale the
+     whole page down to fit, and that scaling is the most likely cause of
+     soft/pixelated text (most visible on the large hero title). Matching
+     the print width to what A4 actually holds means nothing needs to be
+     scaled down at all. */
+  .wrap { max-width: 680px; padding: 28px 20px 40px; }
   .card { break-inside: avoid; }
   .no-print { display: none !important; }
   .print-hide { display: none !important; }
@@ -189,7 +217,7 @@ footer a { color: var(--accent); }
   </div>
 
   <div class="hero-banner">
-    <div class="hero-banner-bg"></div>
+    <div class="hero-banner-bg"><img src="assets/background.jpg" alt=""></div>
     <div class="brand-badge"><img src="assets/upfilm-logo-white.png" alt="Upfilm"></div>
     <div class="hero">
       <div class="hero-title">Deviz</div>
