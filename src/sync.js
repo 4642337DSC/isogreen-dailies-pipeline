@@ -10,13 +10,12 @@ import { syncAudience } from './audience.js';
 import { syncMonthlyViews } from './monthlyViews.js';
 import { syncDailyViews } from './dailyViews.js';
 import { syncThumbnails } from './thumbnails.js';
-import { buildDashboard, buildClientsIndex } from './dashboard.js';
+import { buildDashboard } from './dashboard.js';
 import { buildReportsApp } from './reports.js';
 import { writeSyncSummary } from './summary.js';
 
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
 var CLIENTS_DIR = path.join(__dirname, '..', 'dist', 'clients');
-var DIST_DIR = path.join(CLIENTS_DIR, 'isogreen');
 
 // Earliest "Data Postare" across every tracked row - the actual start of the
 // account's history, used as the monthly-views lookback boundary instead of
@@ -34,6 +33,7 @@ function oldestPostDate(rows) {
 export async function syncAllViews() {
   var cfg = getConfig();
   requireConfig(cfg);
+  var DIST_DIR = path.join(CLIENTS_DIR, cfg.CLIENT_SLUG);
   var fbEnabled = !!(cfg.FB_PAGE_ID && cfg.FB_PAGE_ACCESS_TOKEN);
   var tiktokEnabled = !!(cfg.ZERNIO_API_KEY && cfg.ZERNIO_TIKTOK_ACCOUNT_ID);
   var ytEnabled = !!(cfg.YOUTUBE_OAUTH_CLIENT_ID && cfg.YOUTUBE_OAUTH_CLIENT_SECRET && cfg.YOUTUBE_REFRESH_TOKEN);
@@ -77,10 +77,6 @@ export async function syncAllViews() {
       await buildReportsApp(cfg, dashboardData, DIST_DIR);
     } catch (e) { console.log('Reports app build failed: ' + e); }
   }
-
-  try {
-    await buildClientsIndex(CLIENTS_DIR);
-  } catch (e) { console.log('Clients index build failed: ' + e); }
 
   await writeSyncSummary({ yt: yt, fb: fb, ig: ig, tt: tt });
 }
