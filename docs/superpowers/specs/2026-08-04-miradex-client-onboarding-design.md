@@ -54,8 +54,36 @@ scripts): Channel Stats, Monthly Views, Daily Views, Follower Snapshots.
 - **`notion.js`** (`writeUpdates`) and **`dashboard.js`** (`fetchDashboardRows`): read
   the number-field names from `cfg` (the new `*_FIELD_NAME` vars) instead of the
   hardcoded `'YouTube'`/`'Facebook'`/`'Instagram'`/`'TikTok'` literals.
-- **`dashboard.js`/`reports.js`**: otherwise unchanged — both already take `cfg` +
-  `DIST_DIR` as parameters.
+- **`dashboard.js`/`reports.js`**: otherwise unchanged aside from two client-awareness
+  fixes needed for correct display, not just data:
+  - `buildDashboard()` currently hardcodes `.split('__CLIENT_NAME__').join('ISOGREEN')`
+    — this becomes `cfg.CLIENT_NAME` (a new required-ish config value, e.g.
+    `'MIRADEX'`), so Miradex's dashboard shows its own name instead of "ISOGREEN".
+  - `buildClientsIndex()` currently copies a **static** `templates/ClientsIndex.html`
+    verbatim — it has a single hardcoded `<li>` for Isogreen. It needs to instead
+    generate the `<li>` list by scanning the merged `clientsDir` for client
+    subdirectories (each containing an `index.html`) and rendering one link per
+    folder found, so adding Miradex's output automatically adds it to the picker
+    page without a template edit.
+
+## Deployment reachability (`upfilm.ro/clients/miradex/`)
+
+The existing deploy path already generalizes to any client folder: `sync.yml`'s
+publish step does `cp -r dist/clients/. /tmp/dashboard-repo` — the *contents* of
+`dist/clients/` become the output repo's root — and a cPanel cron job on SiteBunker
+pulls that repo directly into `upfilm.ro`'s `/clients/` webroot. So once Miradex's
+matrix job output (`dist/clients/miradex/`) is merged in by the `publish` job
+alongside Isogreen's, it lands in the output repo as a `miradex/` folder and becomes
+reachable at `upfilm.ro/clients/miradex/` through the exact same mechanism Isogreen
+uses today — no new deploy target or server config needed on our side.
+
+One thing to verify on the server side, since it's outside this repo's visibility:
+confirm the SiteBunker cPanel cron job pulls the *whole* output repo rather than a
+fixed/whitelisted set of folder names. If it does the latter, `miradex/` won't appear
+on the live site even though it's pushed to the output repo, and the cron job config
+would need a one-line update. Worth a spot-check on the first deploy that includes
+Miradex — confirm both `upfilm.ro/clients/miradex/` loads and `upfilm.ro/clients/`
+lists it.
 
 ## GitHub Actions workflow
 
