@@ -305,10 +305,14 @@ function escapeHtml(s) {
 function fmtFull(n) {
   return typeof n === "number" ? n.toLocaleString("en-US") : "—";
 }
+// Forces day and month onto two lines (via <br>, which is respected even
+// under this column's white-space: nowrap) instead of relying on natural
+// wrapping at the space, which would only break there if the column
+// happened to be too narrow - inconsistent depending on exact width.
 function fmtDateRo(iso) {
   if (!iso) return "—";
   var d = new Date(iso + "T00:00:00");
-  return d.getDate() + " " + MONTH_NAMES_RO_LOWER[d.getMonth()];
+  return d.getDate() + "<br>" + MONTH_NAMES_RO_LOWER[d.getMonth()];
 }
 function lastDayOfMonth(ym) {
   var year = parseInt(ym.slice(0, 4), 10);
