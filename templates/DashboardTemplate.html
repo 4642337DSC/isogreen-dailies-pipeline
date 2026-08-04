@@ -20,31 +20,47 @@
      ============================================================ */
 
   :root {
+    /* ---- Upfilm Design System: shape/spacing/motion tokens (mode-independent) ---- */
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-2xl: 28px; --radius-pill: 999px;
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+    --brand-gradient: linear-gradient(135deg, #2B2F8C 0%, #7A2A96 38%, #B31E8D 68%, #E8058C 100%);
+    --ease-standard: cubic-bezier(.2,.8,.2,1);
+    --dur-fast: 120ms; --dur-base: 200ms;
+  }
+  :root {
     color-scheme: light;
-    --bg:        #f9f9f7;
-    --surface:   #fcfcfb;
-    --surface-2: #f3f2ee;
-    --ink:       #0b0b0b;
-    --ink-2:     #52514e;
-    --muted:     #898781;
-    --grid:      #e1e0d9;
-    --border:    rgba(11,11,11,0.10);
-    --border-2:  rgba(11,11,11,0.16);
-    --accent:    #5b3fae;
+    --bg:        #f9f9fc;
+    --surface:   #ffffff;
+    --surface-2: #f1f1f7;
+    --ink:       #28273a;
+    --ink-2:     #57566b;
+    --muted:     #9a9aaf;
+    --grid:      #e7e7f0;
+    --border:    #e7e7f0;
+    --border-2:  #d7d7e4;
+    --accent:    #7a2a96;
     --accent-ink:#ffffff;
-    --accent-wash: rgba(91,63,174,0.08);
-    --good:      #0ca30c;
+    --accent-wash: rgba(122,42,150,0.08);
+    --good:      #1faa6b;
+    --shadow-card:   0 1px 2px rgba(23,22,34,0.04), 0 8px 24px -8px rgba(23,22,34,0.10);
+    --shadow-raised: 0 4px 12px rgba(23,22,34,0.06), 0 16px 40px -12px rgba(23,22,34,0.16);
+    --shadow-accent: 0 1px 2px rgba(23,22,34,0.06);
 
-    /* platform brand colors (official, light-mode step) */
-    --p-yt: #FF0000;  /* YouTube red */
-    --p-tt: #00C4BD;  /* TikTok cyan (their secondary brand color — TikTok's own pink
+    /* platform brand colors (Upfilm Design System, light-mode step) */
+    --p-yt: #FF3B30;  /* YouTube red */
+    --p-tt: #12E5DB;  /* TikTok cyan (their secondary brand color — TikTok's own pink
                           sits ΔE 4.9 from Instagram's pink even for normal vision, an
                           unreadable clash validated via the dataviz palette checker;
                           cyan is still authentically drawn from TikTok's brand palette
                           and stays legible. Logos + legend + labels carry identity too. */
-    --p-ig: #833AB4;  /* Instagram purple (from their own brand gradient; logo glyph uses the full gradient) */
+    --p-ig: #8A3AB9;  /* Instagram purple (from their own brand gradient; logo glyph uses the full gradient) */
     --p-fb: #1877F2;  /* Facebook blue */
 
+    /* Acre is Upfilm's real licensed display/body font (embedded below as a
+       real @font-face) - kept in place of the design system's Plus Jakarta
+       Sans/Inter substitution, since that pairing was only ever a stand-in
+       for "no font files were provided" and a real brand font beats a
+       placeholder. */
     --font-display: "Acre", -apple-system, "Segoe UI Semibold", "Helvetica Neue", Arial, sans-serif;
     --font-body:    "Acre", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     --font-mono:    "Cascadia Code", "SF Mono", Consolas, "Roboto Mono", ui-monospace, monospace;
@@ -52,62 +68,72 @@
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
       color-scheme: dark;
-      --bg:        #0d0d0d;
-      --surface:   #1a1a19;
-      --surface-2: #232322;
-      --ink:       #ffffff;
-      --ink-2:     #c3c2b7;
-      --muted:     #8f8d86;
-      --grid:      #2c2c2a;
-      --border:    rgba(255,255,255,0.10);
-      --border-2:  rgba(255,255,255,0.18);
-      --accent:    #8f7fe0;
-      --accent-ink:#0d0d0d;
-      --accent-wash: rgba(143,127,224,0.14);
-      --good:      #0ca30c;
-      --p-yt: #FF453B;
-      --p-tt: #0DA89F;
-      --p-ig: #C061E0;
-      --p-fb: #3D8FFA;
+      --bg:        #0f0e1a;
+      --surface:   #1b1a29;
+      --surface-2: #211f30;
+      --ink:       #f3f2fa;
+      --ink-2:     #b6b3c9;
+      --muted:     #8b85ac;
+      --grid:      #2a2838;
+      --border:    #2a2838;
+      --border-2:  #34324a;
+      --accent:    #d89bff;
+      --accent-ink:#171622;
+      --accent-wash: rgba(216,155,255,0.14);
+      --good:      #1faa6b;
+      --shadow-card:   0 1px 2px rgba(0,0,0,0.35), 0 8px 24px -8px rgba(0,0,0,0.55);
+      --shadow-raised: 0 4px 16px rgba(0,0,0,0.45), 0 24px 48px -12px rgba(0,0,0,0.65);
+      --shadow-accent: 0 0 32px rgba(179,30,141,0.45), 0 0 10px rgba(232,5,140,0.6);
+      --p-yt: #FF6259;
+      --p-tt: #3FF7EE;
+      --p-ig: #C168F0;
+      --p-fb: #4599FF;
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg:        #0d0d0d;
-    --surface:   #1a1a19;
-    --surface-2: #232322;
-    --ink:       #ffffff;
-    --ink-2:     #c3c2b7;
-    --muted:     #8f8d86;
-    --grid:      #2c2c2a;
-    --border:    rgba(255,255,255,0.10);
-    --border-2:  rgba(255,255,255,0.18);
-    --accent:    #8f7fe0;
-    --accent-ink:#0d0d0d;
-    --accent-wash: rgba(143,127,224,0.14);
-    --good:      #0ca30c;
-    --p-yt: #FF453B;
-    --p-tt: #0DA89F;
-    --p-ig: #C061E0;
-    --p-fb: #3D8FFA;
+    --bg:        #0f0e1a;
+    --surface:   #1b1a29;
+    --surface-2: #211f30;
+    --ink:       #f3f2fa;
+    --ink-2:     #b6b3c9;
+    --muted:     #8b85ac;
+    --grid:      #2a2838;
+    --border:    #2a2838;
+    --border-2:  #34324a;
+    --accent:    #d89bff;
+    --accent-ink:#171622;
+    --accent-wash: rgba(216,155,255,0.14);
+    --good:      #1faa6b;
+    --shadow-card:   0 1px 2px rgba(0,0,0,0.35), 0 8px 24px -8px rgba(0,0,0,0.55);
+    --shadow-raised: 0 4px 16px rgba(0,0,0,0.45), 0 24px 48px -12px rgba(0,0,0,0.65);
+    --shadow-accent: 0 0 32px rgba(179,30,141,0.45), 0 0 10px rgba(232,5,140,0.6);
+    --p-yt: #FF6259;
+    --p-tt: #3FF7EE;
+    --p-ig: #C168F0;
+    --p-fb: #4599FF;
   }
   :root[data-theme="light"] {
     color-scheme: light;
-    --bg:        #f9f9f7;
-    --surface:   #fcfcfb;
-    --surface-2: #f3f2ee;
-    --ink:       #0b0b0b;
-    --ink-2:     #52514e;
-    --muted:     #898781;
-    --grid:      #e1e0d9;
-    --border:    rgba(11,11,11,0.10);
-    --border-2:  rgba(11,11,11,0.16);
-    --accent:    #5b3fae;
+    --bg:        #f9f9fc;
+    --surface:   #ffffff;
+    --surface-2: #f1f1f7;
+    --ink:       #28273a;
+    --ink-2:     #57566b;
+    --muted:     #9a9aaf;
+    --grid:      #e7e7f0;
+    --border:    #e7e7f0;
+    --border-2:  #d7d7e4;
+    --accent:    #7a2a96;
     --accent-ink:#ffffff;
-    --accent-wash: rgba(91,63,174,0.08);
-    --p-yt: #FF0000;
-    --p-tt: #00C4BD;
-    --p-ig: #833AB4;
+    --accent-wash: rgba(122,42,150,0.08);
+    --good:      #1faa6b;
+    --shadow-card:   0 1px 2px rgba(23,22,34,0.04), 0 8px 24px -8px rgba(23,22,34,0.10);
+    --shadow-raised: 0 4px 12px rgba(23,22,34,0.06), 0 16px 40px -12px rgba(23,22,34,0.16);
+    --shadow-accent: 0 1px 2px rgba(23,22,34,0.06);
+    --p-yt: #FF3B30;
+    --p-tt: #12E5DB;
+    --p-ig: #8A3AB9;
     --p-fb: #1877F2;
   }
 
@@ -185,25 +211,27 @@
     border: 1px solid var(--border-2);
     background: var(--surface);
     color: var(--ink-2);
-    border-radius: 7px;
-    padding: 7px 12px;
+    border-radius: var(--radius-pill);
+    padding: 7px 14px;
     font-size: 12.5px;
     cursor: pointer;
+    transition: filter var(--dur-fast) var(--ease-standard);
   }
-  .theme-toggle:hover { color: var(--ink); border-color: var(--ink-2); }
+  .theme-toggle:hover { color: var(--ink); border-color: var(--ink-2); filter: brightness(1.06); }
   .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .reports-link {
     display: inline-block;
     border: 1px solid var(--border-2);
     background: var(--surface);
     color: var(--ink-2);
-    border-radius: 7px;
-    padding: 7px 12px;
+    border-radius: var(--radius-pill);
+    padding: 7px 14px;
     font-size: 12.5px;
     text-decoration: none;
     margin-right: 8px;
+    transition: filter var(--dur-fast) var(--ease-standard);
   }
-  .reports-link:hover { color: var(--ink); border-color: var(--ink-2); }
+  .reports-link:hover { color: var(--ink); border-color: var(--ink-2); filter: brightness(1.06); }
 
   /* ---------- audience strip ---------- */
   .audience-strip {
@@ -214,7 +242,8 @@
     padding: 12px 18px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
     margin-bottom: 22px;
   }
   .audience-eyebrow {
@@ -258,26 +287,30 @@
     border: 1px solid var(--border-2);
     background: var(--surface);
     color: var(--ink-2);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 6px 14px;
     font-size: 13px;
     cursor: pointer;
     font-family: var(--font-body);
+    transition: filter var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
   }
   .chip:hover { background: var(--surface-2); color: var(--ink); }
+  .chip:active { transform: scale(0.97); }
   .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .chip[aria-pressed="true"] {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--brand-gradient);
+    border-color: transparent;
     color: var(--accent-ink);
     font-weight: 600;
+    box-shadow: var(--shadow-accent);
   }
+  .chip[aria-pressed="true"]:hover { filter: brightness(1.06); }
   .date-input {
     border: 1px solid var(--border-2);
     background: var(--surface);
     color: var(--ink);
-    border-radius: 8px;
-    padding: 5px 10px;
+    border-radius: var(--radius-pill);
+    padding: 5px 12px;
     font-size: 13px;
     font-family: var(--font-body);
     color-scheme: light dark;
@@ -286,18 +319,20 @@
   .filterbar .date-sep { color: var(--muted); font-size: 13px; }
 
   /* ---------- KPI strip ---------- */
+  /* Individual floating stat cards (Upfilm Design System's StatCard
+     pattern) rather than the old seamless bordered strip - each KPI gets
+     its own radius/shadow/border instead of sharing one outer box. */
   .kpi-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
+    gap: var(--space-4);
     margin-bottom: 28px;
   }
   .kpi {
     background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
     padding: 18px 18px 16px;
     display: flex;
     flex-direction: column;
@@ -339,7 +374,8 @@
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
     padding: 22px 24px 20px;
     margin-bottom: 22px;
   }
@@ -383,10 +419,11 @@
   .chart-tab:hover { background: var(--surface-2); color: var(--ink); }
   .chart-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .chart-tab[aria-selected="true"] {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--brand-gradient);
+    border-color: transparent;
     color: var(--accent-ink);
     font-weight: 600;
+    box-shadow: var(--shadow-accent);
   }
   .chart-scroll { overflow-x: auto; }
   .chart-svg { display: block; width: 100%; height: 260px; touch-action: pan-y; }
@@ -402,7 +439,7 @@
     pointer-events: none;
     background: var(--ink);
     color: var(--bg);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 10px 12px;
     font-size: 12.5px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.24);
@@ -438,10 +475,11 @@
   .perf-filter-chip:hover { background: var(--surface-2); color: var(--ink); }
   .perf-filter-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .perf-filter-chip[aria-pressed="true"] {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--brand-gradient);
+    border-color: transparent;
     color: var(--accent-ink);
     font-weight: 600;
+    box-shadow: var(--shadow-accent);
   }
   .perf-grid {
     display: grid;
@@ -452,7 +490,7 @@
   .perf-card {
     position: relative;
     aspect-ratio: 9 / 16;
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
     background: var(--surface-2);
     border: 1px solid var(--border);
@@ -545,7 +583,7 @@
   @media (max-width: 560px) {
     .month-list { grid-template-columns: 1fr; }
   }
-  .month-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; align-self: start; }
+  .month-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); overflow: hidden; align-self: start; }
   .month-row summary {
     list-style: none;
     cursor: pointer;
@@ -578,8 +616,8 @@
   .search-input {
     background: var(--surface-2);
     border: 1px solid var(--border-2);
-    border-radius: 8px;
-    padding: 8px 12px;
+    border-radius: var(--radius-pill);
+    padding: 8px 16px;
     font-size: 13px;
     color: var(--ink);
     width: 240px;
@@ -591,7 +629,7 @@
     border: 1px solid var(--border-2);
     background: var(--surface);
     color: var(--ink-2);
-    border-radius: 8px;
+    border-radius: var(--radius-pill);
     padding: 8px 18px;
     font-size: 13px;
     cursor: pointer;
@@ -602,7 +640,7 @@
   /* The table's 10 nowrap-cell columns are always wider than a mobile
      viewport - auto (not visible) keeps the horizontal scroll contained to
      this box instead of blowing out the whole page's layout. */
-  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 10px; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: var(--radius-lg); }
   table { min-width: 720px; }
   table { border-collapse: collapse; width: 100%; table-layout: auto; }
   thead th {
@@ -638,7 +676,7 @@
   tbody td.thumb-cell { padding: 6px 9px; }
   .row-thumb {
     width: 40px; height: 40px;
-    border-radius: 7px;
+    border-radius: var(--radius-sm);
     display: flex; align-items: center; justify-content: center;
     color: rgba(255,255,255,0.92);
     font-family: var(--font-display);
@@ -673,7 +711,7 @@
   tbody td.transcript-cell { text-align: center; }
   .transcript-check {
     width: 24px; height: 24px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     border: 1px solid color-mix(in srgb, var(--good) 45%, transparent);
     background: color-mix(in srgb, var(--good) 12%, transparent);
     color: var(--good);
@@ -703,13 +741,13 @@
     position: relative;
     background: var(--surface);
     border: 1px solid var(--border-2);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     max-width: 560px;
     width: 100%;
     max-height: 80vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.32);
+    box-shadow: var(--shadow-raised);
   }
   .transcript-modal-head {
     display: flex;
@@ -728,7 +766,7 @@
     border: 1px solid var(--border-2);
     background: var(--surface-2);
     color: var(--ink-2);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     width: 26px; height: 26px;
     font-size: 12px;
     cursor: pointer;

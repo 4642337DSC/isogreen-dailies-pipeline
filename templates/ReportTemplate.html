@@ -14,23 +14,30 @@
    browsers zero out at a forced page break regardless). */
 @page { size: A4; }
 :root {
-  --bg: #ffffff;
-  --surface: #f5f4f0;
-  --surface-2: #ebe9e2;
-  --ink: #1a1a17;
-  --ink-2: #52514a;
-  --muted: #8a8880;
-  --border: rgba(0,0,0,0.08);
-  --border-2: rgba(0,0,0,0.16);
-  --accent: #6f5fd8;
+  --bg: #f9f9fc;
+  --surface: #ffffff;
+  --surface-2: #f1f1f7;
+  --ink: #28273a;
+  --ink-2: #57566b;
+  --muted: #9a9aaf;
+  --border: #e7e7f0;
+  --border-2: #d7d7e4;
+  --accent: #7a2a96;
   --accent-ink: #ffffff;
-  --p-yt: #FF453B;
-  --p-tt: #0DA89F;
-  --p-ig: #C061E0;
-  --p-fb: #3D8FFA;
+  --p-yt: #FF3B30;
+  --p-tt: #12E5DB;
+  --p-ig: #8A3AB9;
+  --p-fb: #1877F2;
+  /* Acre is Upfilm's real licensed font (embedded below), kept in place of
+     the Upfilm Design System's Plus Jakarta Sans/Inter placeholder pairing. */
   --font-display: "Acre", -apple-system, "Segoe UI Semibold", "Helvetica Neue", Arial, sans-serif;
   --font-body: "Acre", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --font-mono: "Cascadia Code", "SF Mono", Consolas, "Roboto Mono", ui-monospace, monospace;
+
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-pill: 999px;
+  --brand-gradient: linear-gradient(135deg, #2B2F8C 0%, #7A2A96 38%, #B31E8D 68%, #E8058C 100%);
+  --shadow-card: 0 1px 2px rgba(23,22,34,0.04), 0 8px 24px -8px rgba(23,22,34,0.10);
+  --shadow-accent: 0 1px 2px rgba(23,22,34,0.06);
 }
 * { box-sizing: border-box; }
 body {
@@ -46,31 +53,33 @@ body {
 .picker { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; flex-wrap: wrap; }
 .picker label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .picker select {
-  background: var(--surface); color: var(--ink); border: 1px solid var(--border-2); border-radius: 8px;
-  padding: 8px 10px; font-family: var(--font-body); font-size: 14px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border-2); border-radius: var(--radius-pill);
+  padding: 8px 14px; font-family: var(--font-body); font-size: 14px;
 }
 .generate-btn {
   border: none;
-  background: var(--accent);
+  background: var(--brand-gradient);
   color: var(--accent-ink);
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 13.5px;
-  padding: 10px 18px;
-  border-radius: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-accent);
   cursor: pointer;
   margin-left: auto;
+  transition: filter 120ms cubic-bezier(.2,.8,.2,1);
 }
-.generate-btn:hover { opacity: 0.9; }
+.generate-btn:hover { filter: brightness(1.06); }
 .back-btn {
   border: 1px solid var(--border-2);
-  background: transparent;
+  background: var(--surface);
   color: var(--ink-2);
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 13.5px;
   padding: 9px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   text-decoration: none;
 }
 .back-btn:hover { background: var(--surface-2); }
@@ -88,8 +97,9 @@ body {
 .hero-sub { font-size: 15px; color: var(--ink-2); margin: 0 0 4px; }
 .hero-client { font-size: 15px; color: var(--muted); }
 .card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 22px 24px;
   margin-bottom: 22px;
+  box-shadow: var(--shadow-card);
 }
 .card-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin-bottom: 14px; }
 .card-hint { font-size: 11.5px; color: var(--muted); margin-bottom: 14px; margin-top: -10px; }
@@ -132,17 +142,17 @@ th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8), th:nth-child
 /* Sized to fill its cell (up to 90px) rather than a fixed 90px, so it
    shrinks along with the thumb-cell's own 11% on narrower print widths
    instead of overflowing it. */
-.thumb { width: 100%; max-width: 90px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 8px; display: block; background: var(--surface-2); }
-.thumb-empty { width: 100%; max-width: 90px; aspect-ratio: 9 / 16; border-radius: 8px; background: var(--surface-2); }
+.thumb { width: 100%; max-width: 90px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: var(--radius-sm); display: block; background: var(--surface-2); }
+.thumb-empty { width: 100%; max-width: 90px; aspect-ratio: 9 / 16; border-radius: var(--radius-sm); background: var(--surface-2); }
 .empty-row td { text-align: center; color: var(--muted); padding: 22px 10px; }
 .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .stat-item { display: flex; align-items: center; gap: 10px; }
-.stat-badge { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex: none; overflow: hidden; }
+.stat-badge { width: 26px; height: 26px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex: none; overflow: hidden; }
 .stat-badge svg { width: 100%; height: 100%; }
 .stat-value { font-family: var(--font-mono); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
 .stat-input {
   font-family: var(--font-mono); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums;
-  background: transparent; color: var(--ink); border: 1px solid var(--border-2); border-radius: 6px;
+  background: transparent; color: var(--ink); border: 1px solid var(--border-2); border-radius: var(--radius-sm);
   padding: 2px 6px; width: 120px;
 }
 /* Narrower than the general .stat-input so it doesn't leave a big gap
@@ -179,7 +189,11 @@ footer a { color: var(--accent); }
      the print width to what A4 actually holds means nothing needs to be
      scaled down at all. */
   .wrap { max-width: 680px; padding: 28px 20px 40px; }
-  .card { break-inside: avoid; }
+  /* Box shadows are dropped for print - card separation relies on the
+     border alone here, since a shadow risks the same rasterization/
+     pixelation failure mode fought earlier with the hero photo layer. */
+  .card { break-inside: avoid; box-shadow: none; }
+  .generate-btn { box-shadow: none; }
   .no-print { display: none !important; }
   .print-hide { display: none !important; }
   /* Editable fields should read as plain figures in the exported PDF, not
