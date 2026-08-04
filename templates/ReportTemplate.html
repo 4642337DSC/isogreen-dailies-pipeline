@@ -79,35 +79,14 @@ body {
   margin-bottom: 32px;
   padding: 26px 28px 40px;
 }
-/* The background photo lives in its own clipped/rounded layer, separate
-   from the text sitting on top of it, and as a real <img> element rather
-   than a CSS background-image - Chrome's PDF export embeds <img> content
-   more reliably than a background-image layer, which in some cases gets
-   flattened into a bitmap that also swallows anything painted in the
-   same screen region, including overlapping text. */
-.hero-banner-bg {
-  position: absolute; inset: 0; z-index: 0;
-  border-radius: 16px; overflow: hidden;
-}
-.hero-banner-bg img {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; display: block;
-}
-.hero-banner-bg::after {
-  content: ""; position: absolute; inset: 0;
-  background-image: linear-gradient(180deg, rgba(13,13,13,0.55) 0%, rgba(13,13,13,0.88) 75%, rgba(13,13,13,0.98) 100%);
-}
-.brand-badge {
-  position: absolute; z-index: 1; top: 20px; right: 24px; width: 92px; height: 92px;
-}
-.brand-badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
-/* The hero banner sits on a dark photo (with a dark gradient overlay) no
-   matter the page's own light/dark theme, so its text stays white
-   regardless of --ink. */
-.hero { position: relative; z-index: 1; text-align: center; margin-top: 22px; color: #fff; }
+.brand-badge { position: absolute; z-index: 1; top: 20px; height: 44px; }
+.brand-badge-left { left: 24px; }
+.brand-badge-right { right: 24px; }
+.brand-badge img { height: 100%; width: auto; object-fit: contain; display: block; }
+.hero { position: relative; z-index: 1; text-align: center; margin-top: 22px; color: var(--ink); }
 .hero-title { font-family: var(--font-display); font-weight: 700; font-size: 56px; letter-spacing: -0.02em; margin: 0 0 6px; }
-.hero-sub { font-size: 15px; color: rgba(255,255,255,0.78); margin: 0 0 4px; }
-.hero-client { font-size: 15px; color: rgba(255,255,255,0.55); }
+.hero-sub { font-size: 15px; color: var(--ink-2); margin: 0 0 4px; }
+.hero-client { font-size: 15px; color: var(--muted); }
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px;
   margin-bottom: 22px;
@@ -233,8 +212,8 @@ footer a { color: var(--accent); }
   </div>
 
   <div class="hero-banner">
-    <div class="hero-banner-bg"><img src="assets/background.jpg" alt=""></div>
-    <div class="brand-badge"><img src="assets/upfilm-logo-white.png" alt="Upfilm"></div>
+    <div class="brand-badge brand-badge-left"><img src="assets/isogreen-logo.svg" alt="Isogreen"></div>
+    <div class="brand-badge brand-badge-right"><img src="assets/upfilm-logo-transparent.png" alt="Upfilm"></div>
     <div class="hero">
       <div class="hero-title">Deviz</div>
       <div class="hero-sub" id="heroSub"></div>
@@ -466,7 +445,7 @@ function render() {
   document.getElementById("videoRows").innerHTML = buildVideoRowsHtml(monthRows);
   document.getElementById("networkViews").innerHTML = buildNetworkViewsHtml(ym, monthRows, MONTHLY_VIEWS);
   document.getElementById("followerStats").innerHTML = buildFollowerStatsHtml(ym, FOLLOWER_SNAPSHOTS);
-  document.title = "__CLIENT_NAME__ - " + monthLabel + " - report";
+  document.title = "__CLIENT_NAME__ - " + monthLabel + " - deviz";
 }
 
 populateSelectors();

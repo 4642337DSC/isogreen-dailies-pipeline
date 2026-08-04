@@ -17,13 +17,8 @@ async function copyReportAssets(outDir) {
   var assetsDir = path.join(outDir, 'reports', 'assets');
   await fs.mkdir(assetsDir, { recursive: true });
   var srcDir = new URL('../assets/report/', import.meta.url);
-  await fs.copyFile(new URL('background.jpg', srcDir), path.join(assetsDir, 'background.jpg'));
-  // Transparent-background colored mark for the footer (sits on the dark
-  // page background); flattened-white version for the top-right badge
-  // (sits on the photo banner, where the colored gradient would be harder
-  // to read).
   await fs.copyFile(new URL('upfilm-logo-transparent.png', srcDir), path.join(assetsDir, 'upfilm-logo-transparent.png'));
-  await fs.copyFile(new URL('upfilm-logo-white.png', srcDir), path.join(assetsDir, 'upfilm-logo-white.png'));
+  await fs.copyFile(new URL('isogreen-logo.svg', srcDir), path.join(assetsDir, 'isogreen-logo.svg'));
 }
 
 // Builds the single Reports app page
