@@ -128,11 +128,20 @@ th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size
 td.name-cell { color: var(--ink); }
 td.total-cell { font-family: var(--font-mono); font-weight: 700; font-variant-numeric: tabular-nums; }
 td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
-.thumb-cell { width: 11%; }
+/* table-layout: fixed reads column widths from the table's FIRST ROW
+   (the thead), not from tbody rows - a width set only on tbody's
+   .thumb-cell class (with no matching rule on the header's blank first
+   th) was effectively ignored for column sizing, since the header cell
+   it needed to read from had no width at all. Every column's width is
+   now set via nth-child on BOTH th and td so the header row (which is
+   what fixed layout actually consults) is always the source of truth,
+   and the nine values sum to exactly 100%. */
+th:nth-child(1), td:nth-child(1) { width: 11%; }
 th:nth-child(2), td:nth-child(2) { width: 7%; }
-th:nth-child(3), td:nth-child(3) { width: 24%; }
+th:nth-child(3), td:nth-child(3) { width: 27%; }
 th:nth-child(4), td:nth-child(4) { width: 10%; }
-th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6), th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8) { width: 10%; }
+th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { width: 10%; }
+th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8) { width: 8%; }
 th:nth-child(9), td:nth-child(9) { width: 9%; }
 /* Sized to fill its cell (up to 90px) rather than a fixed 90px, so it
    shrinks along with the thumb-cell's own 11% on narrower print widths
