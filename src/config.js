@@ -14,7 +14,14 @@ export function getConfig() {
     FOLLOWER_SNAPSHOTS_DATABASE_ID: process.env.FOLLOWER_SNAPSHOTS_DATABASE_ID || null,
     YOUTUBE_OAUTH_CLIENT_ID: process.env.YOUTUBE_OAUTH_CLIENT_ID || null,
     YOUTUBE_OAUTH_CLIENT_SECRET: process.env.YOUTUBE_OAUTH_CLIENT_SECRET || null,
-    YOUTUBE_REFRESH_TOKEN: process.env.YOUTUBE_REFRESH_TOKEN || null
+    YOUTUBE_REFRESH_TOKEN: process.env.YOUTUBE_REFRESH_TOKEN || null,
+    CLIENT_SLUG: process.env.CLIENT_SLUG || 'isogreen',
+    CLIENT_NAME: process.env.CLIENT_NAME || 'ISOGREEN',
+    NOTION_FILTER_TIP: process.env.NOTION_FILTER_TIP !== 'false',
+    YT_FIELD_NAME: process.env.YT_FIELD_NAME || 'YouTube',
+    FB_FIELD_NAME: process.env.FB_FIELD_NAME || 'Facebook',
+    IG_FIELD_NAME: process.env.IG_FIELD_NAME || 'Instagram',
+    TT_FIELD_NAME: process.env.TT_FIELD_NAME || 'TikTok'
   };
 }
 
