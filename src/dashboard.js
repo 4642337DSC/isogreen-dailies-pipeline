@@ -178,14 +178,25 @@ export async function buildDashboard(cfg, thumbMap, outDir) {
   return { rows: rows, audience: audience, monthly: monthly, daily: daily, followerSnapshots: followerSnapshots };
 }
 
-// Static picker page at /clients/ listing every client dashboard - no
-// per-client data, just a plain copy since it barely ever changes (adding a
-// client is a code change anyway, given each one needs its own Notion
-// databases and platform credentials wired up).
+export function renderClientLinks(slugs) {
+  return slugs.slice().sort().map(function (slug) {
+    return '      <li><a href="/clients/' + slug + '/">' + slug.toUpperCase() + '</a></li>';
+  }).join('\n');
+}
+
+// Static picker page at /clients/ - regenerated from whichever client
+// subdirectories are actually present under clientsDir at publish time (see
+// scripts/build-clients-index.js), so adding a client is a schema/secrets
+// change, not a template edit.
 export async function buildClientsIndex(clientsDir) {
+  var entries = await fs.readdir(clientsDir, { withFileTypes: true }).catch(function () { return []; });
+  var slugs = entries.filter(function (e) { return e.isDirectory(); }).map(function (e) { return e.name; });
+
   var templatePath = new URL('../templates/ClientsIndex.html', import.meta.url);
   var html = await fs.readFile(templatePath, 'utf8');
+  html = html.replace('<!--__CLIENT_LINKS__-->', renderClientLinks(slugs));
+
   await fs.mkdir(clientsDir, { recursive: true });
   await fs.writeFile(path.join(clientsDir, 'index.html'), html, 'utf8');
-  console.log('Clients index written to ' + path.join(clientsDir, 'index.html'));
+  console.log('Clients index written to ' + path.join(clientsDir, 'index.html') + ' (' + slugs.length + ' client(s): ' + slugs.slice().sort().join(', ') + ')');
 }

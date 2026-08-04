@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDashboardRow } from './dashboard.js';
+import { buildDashboardRow, renderClientLinks } from './dashboard.js';
 
 function page(props) {
   return { properties: props };
@@ -45,4 +45,14 @@ test('buildDashboardRow returns null when there is no post date', () => {
   });
 
   assert.equal(buildDashboardRow(cfg, p, {}), null);
+});
+
+test('renderClientLinks renders one link per slug, sorted, label uppercased', () => {
+  var html = renderClientLinks(['miradex', 'isogreen']);
+
+  assert.equal(
+    html,
+    '      <li><a href="/clients/isogreen/">ISOGREEN</a></li>\n' +
+    '      <li><a href="/clients/miradex/">MIRADEX</a></li>'
+  );
 });
