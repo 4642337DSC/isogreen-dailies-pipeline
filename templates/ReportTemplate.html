@@ -7,22 +7,23 @@
 <meta name="description" content="Generator de rapoarte lunare pentru __CLIENT_NAME__." />
 <style>
 /*__FONT_FACE__*/
-/* Chrome's print dialog "Margins: None" option (the default requested for
-   this report's PDF export) overrides @page CSS margins entirely, so page
-   breathing room has to come from the content's own box model instead -
-   see .card's margin-top below. */
-@page { margin: 0; }
+/* A4 with no margin override - the browser's own default print margins
+   apply, which reliably keep content off the page edge (unlike a forced
+   @page margin, which some print dialogs' "Margins: None" option ignores
+   anyway, and unlike relying on an element's own margin-top, which
+   browsers zero out at a forced page break regardless). */
+@page { size: A4; }
 :root {
-  --bg: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #232322;
-  --ink: #ffffff;
-  --ink-2: #c3c2b7;
-  --muted: #8f8d86;
-  --border: rgba(255,255,255,0.10);
-  --border-2: rgba(255,255,255,0.18);
-  --accent: #8f7fe0;
-  --accent-ink: #0d0d0d;
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface-2: #f0efe8;
+  --ink: #1a1a17;
+  --ink-2: #52514a;
+  --muted: #8a8880;
+  --border: rgba(0,0,0,0.08);
+  --border-2: rgba(0,0,0,0.16);
+  --accent: #6f5fd8;
+  --accent-ink: #ffffff;
   --p-yt: #FF453B;
   --p-tt: #0DA89F;
   --p-ig: #C061E0;
@@ -75,18 +76,15 @@ body {
   position: absolute; top: 20px; right: 24px; width: 92px; height: 92px;
 }
 .brand-badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.hero { text-align: center; margin-top: 22px; }
+/* The hero banner sits on a dark photo (with a dark gradient overlay) no
+   matter the page's own light/dark theme, so its text stays white
+   regardless of --ink. */
+.hero { text-align: center; margin-top: 22px; color: #fff; }
 .hero-title { font-family: var(--font-display); font-weight: 700; font-size: 56px; letter-spacing: -0.02em; margin: 0 0 6px; }
-.hero-sub { font-size: 15px; color: var(--ink-2); margin: 0 0 4px; }
-.hero-client { font-size: 15px; color: var(--muted); }
+.hero-sub { font-size: 15px; color: rgba(255,255,255,0.78); margin: 0 0 4px; }
+.hero-client { font-size: 15px; color: rgba(255,255,255,0.55); }
 .card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-  /* Extra top padding, not margin: browsers zero out a block's own
-     margin-top when it's forced to the start of a new printed page
-     (per the CSS fragmentation spec), so margin alone never actually
-     created breathing room there - padding is part of the box itself
-     and survives the break. */
-  padding: 34px 24px 22px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px;
   margin-bottom: 22px;
 }
 .card-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin-bottom: 14px; }
@@ -98,9 +96,9 @@ th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size
 td.name-cell { color: var(--ink); }
 td.total-cell { font-family: var(--font-mono); font-weight: 700; font-variant-numeric: tabular-nums; }
 td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
-.thumb-cell { width: 52px; }
-.thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; display: block; background: var(--surface-2); }
-.thumb-empty { width: 44px; height: 44px; border-radius: 6px; background: var(--surface-2); }
+.thumb-cell { width: 100px; }
+.thumb { width: 90px; height: 160px; object-fit: cover; border-radius: 8px; display: block; background: var(--surface-2); }
+.thumb-empty { width: 90px; height: 160px; border-radius: 8px; background: var(--surface-2); }
 .empty-row td { text-align: center; color: var(--muted); padding: 22px 10px; }
 .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .stat-item { display: flex; align-items: center; gap: 10px; }
@@ -120,11 +118,15 @@ td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: v
   font-size: 12.5px; font-weight: 600; color: var(--accent); width: 56px; padding: 2px 4px; margin-left: 0;
 }
 .stat-delta { font-size: 12.5px; color: var(--accent); font-family: var(--font-mono); margin-left: 6px; }
+.comments-block { margin-bottom: 22px; }
 .comments-input {
-  width: 100%; min-height: 90px; resize: vertical;
-  background: var(--surface-2); color: var(--ink); border: 1px solid var(--border-2); border-radius: 8px;
-  padding: 10px 12px; font-family: var(--font-body); font-size: 14px; line-height: 1.5;
+  display: block; width: 100%; min-height: 40px; resize: vertical;
+  background: transparent; color: var(--ink); border: none; border-radius: 0;
+  padding: 0; font-family: var(--font-body); font-size: 14px; line-height: 1.5;
 }
+/* No permanent box - just a faint dashed outline while actually editing,
+   so the field is still discoverable without looking like a form. */
+.comments-input:focus { outline: 1px dashed var(--border-2); outline-offset: 4px; }
 .month-note { text-align: center; color: var(--ink-2); font-size: 14px; margin: 40px 0 20px; }
 .month-note b { color: var(--ink); }
 .footer-logo { margin: 0 auto 14px; width: 68px; height: 68px; }
@@ -140,7 +142,6 @@ footer a { color: var(--accent); }
   /* Editable fields should read as plain figures in the exported PDF, not
      as visible form controls - no border/background contour. */
   .stat-input { border: none; background: transparent; padding: 2px 0; }
-  .comments-input { border-color: #999; }
 }
 </style>
 </head>
@@ -196,9 +197,8 @@ footer a { color: var(--accent); }
     <div class="stat-grid" id="followerStats"></div>
   </div>
 
-  <div class="card" id="commentsCard">
-    <div class="card-title">Comentarii</div>
-    <div class="card-hint no-print">Opțional - apare în PDF-ul generat dacă e completat. Nu se salvează după ce închizi pagina.</div>
+  <div class="comments-block" id="commentsCard">
+    <div class="card-hint no-print">Comentariu opțional pentru acest raport - apare în PDF dacă e completat. Nu se salvează după ce închizi pagina.</div>
     <textarea class="comments-input" id="commentsInput" placeholder="Adaugă un comentariu pentru acest raport…"></textarea>
   </div>
 
