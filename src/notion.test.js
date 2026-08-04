@@ -1,0 +1,52 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { buildShortsFilter, buildUpdatePayloads } from './notion.js';
+
+test('buildShortsFilter includes the Tip clause when NOTION_FILTER_TIP is true', () => {
+  var filter = buildShortsFilter({ NOTION_FILTER_TIP: true });
+  assert.deepEqual(filter, {
+    and: [
+      { property: 'Tip', multi_select: { contains: 'Short' } },
+      { property: 'Postat?', checkbox: { equals: true } }
+    ]
+  });
+});
+
+test('buildShortsFilter omits the Tip clause when NOTION_FILTER_TIP is false', () => {
+  var filter = buildShortsFilter({ NOTION_FILTER_TIP: false });
+  assert.deepEqual(filter, {
+    and: [{ property: 'Postat?', checkbox: { equals: true } }]
+  });
+});
+
+test('buildUpdatePayloads writes counts into the cfg-configured field names', () => {
+  var cfg = {
+    YT_FIELD_NAME: 'V7Z - Yt Shorts',
+    FB_FIELD_NAME: 'V7Z - Fb',
+    IG_FIELD_NAME: 'V7Z - Insta',
+    TT_FIELD_NAME: 'V7Z - TikTok'
+  };
+  var row = { pageId: 'page-1' };
+  var yt = { results: [{ row: row, views: 100, url: 'https://youtu.be/x' }] };
+  var fb = { results: [{ row: row, views: 50 }] };
+
+  var payloads = buildUpdatePayloads(cfg, [row], yt, fb, null, null);
+
+  assert.deepEqual(payloads, {
+    'page-1': {
+      'V7Z - Yt Shorts': { number: 100 },
+      'YouTube URL': { url: 'https://youtu.be/x' },
+      'V7Z - Fb': { number: 50 }
+    }
+  });
+});
+
+test('buildUpdatePayloads skips platforms passed as null', () => {
+  var cfg = { YT_FIELD_NAME: 'YouTube', FB_FIELD_NAME: 'Facebook', IG_FIELD_NAME: 'Instagram', TT_FIELD_NAME: 'TikTok' };
+  var row = { pageId: 'page-1' };
+  var yt = { results: [{ row: row, views: 5 }] };
+
+  var payloads = buildUpdatePayloads(cfg, [row], yt, null, null, null);
+
+  assert.deepEqual(payloads, { 'page-1': { YouTube: { number: 5 } } });
+});

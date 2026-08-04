@@ -16,12 +16,7 @@ export async function fetchNotionRows(cfg) {
   do {
     var payload = {
       page_size: 100,
-      filter: {
-        and: [
-          { property: 'Tip', multi_select: { contains: 'Short' } },
-          { property: 'Postat?', checkbox: { equals: true } }
-        ]
-      }
+      filter: buildShortsFilter(cfg)
     };
     if (cursor) payload.start_cursor = cursor;
     var data = await fetchJson('https://api.notion.com/v1/databases/' + cfg.NOTION_DATABASE_ID + '/query', {
@@ -296,6 +291,12 @@ function diceCoefficient(a, b) {
 
 // ===== Cross-platform report/write helpers =====
 
+export function buildShortsFilter(cfg) {
+  var and = [{ property: 'Postat?', checkbox: { equals: true } }];
+  if (cfg.NOTION_FILTER_TIP) and.unshift({ property: 'Tip', multi_select: { contains: 'Short' } });
+  return { and: and };
+}
+
 export function buildPlatformReport(rows, results) {
   var matchedPageIds = {};
   results.forEach(function (r) { matchedPageIds[r.row.pageId] = true; });
@@ -303,7 +304,7 @@ export function buildPlatformReport(rows, results) {
   return { results: results, unmatched: unmatched };
 }
 
-export async function writeUpdates(cfg, rows, yt, fb, ig, tt) {
+export function buildUpdatePayloads(cfg, rows, yt, fb, ig, tt) {
   var byPage = {};
   function entryFor(row) {
     if (!byPage[row.pageId]) byPage[row.pageId] = {};
@@ -312,30 +313,35 @@ export async function writeUpdates(cfg, rows, yt, fb, ig, tt) {
 
   yt.results.forEach(function (r) {
     var props = entryFor(r.row);
-    props['YouTube'] = { number: r.views };
+    props[cfg.YT_FIELD_NAME] = { number: r.views };
     if (r.url) props['YouTube URL'] = { url: r.url };
   });
   if (fb) {
     fb.results.forEach(function (r) {
       var props = entryFor(r.row);
-      props['Facebook'] = { number: r.views };
+      props[cfg.FB_FIELD_NAME] = { number: r.views };
       if (r.url) props['Facebook URL'] = { url: r.url };
     });
   }
   if (ig) {
     ig.results.forEach(function (r) {
       var props = entryFor(r.row);
-      props['Instagram'] = { number: r.views };
+      props[cfg.IG_FIELD_NAME] = { number: r.views };
       if (r.url) props['Instagram URL'] = { url: r.url };
     });
   }
   if (tt) {
     tt.results.forEach(function (r) {
       var props = entryFor(r.row);
-      props['TikTok'] = { number: r.views };
+      props[cfg.TT_FIELD_NAME] = { number: r.views };
     });
   }
 
+  return byPage;
+}
+
+export async function writeUpdates(cfg, rows, yt, fb, ig, tt) {
+  var byPage = buildUpdatePayloads(cfg, rows, yt, fb, ig, tt);
   for (var pageId of Object.keys(byPage)) {
     await updateNotionPage(cfg, pageId, byPage[pageId]);
   }
