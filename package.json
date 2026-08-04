@@ -6,6 +6,8 @@
   "description": "Daily YouTube/Facebook/Instagram/TikTok view-count sync into Notion, plus static client dashboard build for upfilm.ro/clients/isogreen.",
   "scripts": {
     "sync": "node src/sync.js",
+    "build:clients-index": "node scripts/build-clients-index.js",
+    "test": "node --test src/*.test.js",
     "backfill:thumbnails": "node scripts/backfill-thumbnails.js",
     "backfill:monthly-views": "node scripts/backfill-monthly-views.js",
     "backfill:tiktok-monthly": "node scripts/backfill-tiktok-monthly.js",
