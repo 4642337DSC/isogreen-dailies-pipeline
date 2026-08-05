@@ -33,16 +33,30 @@ export async function fetchAllYouTubeVideos(cfg) {
   return videos;
 }
 
+// PT1H2M3S -> 3723 (seconds). YouTube omits higher units entirely below
+// their value (e.g. "PT45S" for a Short, no H/M) rather than zero-padding.
+export function parseIso8601Duration(iso) {
+  var m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/.exec(iso || '');
+  if (!m) return null;
+  var hours = m[1] ? parseInt(m[1], 10) : 0;
+  var minutes = m[2] ? parseInt(m[2], 10) : 0;
+  var seconds = m[3] ? parseFloat(m[3]) : 0;
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
 export async function fetchYouTubeViewCounts(cfg, videoIds) {
   var unique = videoIds.filter(function (id, i) { return videoIds.indexOf(id) === i; });
   var stats = {};
   for (var i = 0; i < unique.length; i += 50) {
     var batch = unique.slice(i, i + 50);
-    var url = 'https://www.googleapis.com/youtube/v3/videos?part=statistics&id=' +
+    var url = 'https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=' +
       batch.join(',') + '&key=' + cfg.YOUTUBE_API_KEY;
     var data = await fetchJson(url);
     (data.items || []).forEach(function (item) {
-      stats[item.id] = parseInt(item.statistics.viewCount, 10);
+      stats[item.id] = {
+        views: parseInt(item.statistics.viewCount, 10),
+        duration: parseIso8601Duration(item.contentDetails && item.contentDetails.duration)
+      };
     });
   }
   return stats;
@@ -77,10 +91,10 @@ export async function syncYouTube(cfg, rows) {
   var stats = await fetchYouTubeViewCounts(cfg, idsNeeded);
   var results = [];
   plan.forEach(function (p) {
-    var views = stats[p.id];
-    if (views === undefined) return;
+    var stat = stats[p.id];
+    if (stat === undefined) return;
     results.push({
-      row: p.row, views: views, isNewMatch: p.isNewMatch, method: p.method, score: p.score,
+      row: p.row, views: stat.views, duration: stat.duration, isNewMatch: p.isNewMatch, method: p.method, score: p.score,
       url: p.isNewMatch ? ('https://www.youtube.com/watch?v=' + p.id) : null
     });
   });

@@ -315,6 +315,12 @@ export function buildUpdatePayloads(cfg, rows, yt, fb, ig, tt) {
     var props = entryFor(r.row);
     props[cfg.YT_FIELD_NAME] = { number: r.views };
     if (r.url) props['YouTube URL'] = { url: r.url };
+    // Duration only needs one source since it's the same video everywhere -
+    // YouTube is used since every row is matched there and it's a single
+    // extra field on a call the sync already makes (see
+    // fetchYouTubeViewCounts), unlike Facebook (a separate field-expansion
+    // request) or Instagram/TikTok (no duration field available at all).
+    if (typeof r.duration === 'number') props['Duration (s)'] = { number: r.duration };
   });
   if (fb) {
     fb.results.forEach(function (r) {
