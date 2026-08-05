@@ -73,11 +73,18 @@ export async function writeAudienceStats(cfg, stats) {
     var platform = (page.properties['Platform'].title || []).map(function (t) { return t.plain_text; }).join('');
     var s = stats[platform];
     if (!s) continue;
-    var props = {
-      'Followers': { number: s.followers },
-      'Updated At': { date: { start: new Date().toISOString() } }
-    };
-    if (s.totalViews !== undefined) props['Total Channel Views'] = { number: s.totalViews };
+    // Only "Platform" + "Followers" are guaranteed (the documented schema -
+    // see Task 7 in the Miradex onboarding plan). "Updated At" and "Total
+    // Channel Views" exist on Isogreen's database (created manually, ahead
+    // of spec) but not necessarily on a new client's - Notion rejects a
+    // PATCH atomically if ANY property in it doesn't exist on the target
+    // database, which would silently drop the Followers write too. Only
+    // include the optional ones when the queried page actually has them.
+    var props = { 'Followers': { number: s.followers } };
+    if (page.properties['Updated At']) props['Updated At'] = { date: { start: new Date().toISOString() } };
+    if (s.totalViews !== undefined && page.properties['Total Channel Views']) {
+      props['Total Channel Views'] = { number: s.totalViews };
+    }
     await updateNotionPage(cfg, page.id, props);
   }
 }
