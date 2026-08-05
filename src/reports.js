@@ -14,24 +14,29 @@ async function loadFontFace() {
 // rather than something that needs to travel inside a portable HTML file
 // (unlike the font, which is spliced in from DashboardTemplate.html).
 // Upfilm's own logo is shared by every client; the left badge is each
-// client's own logo, expected at assets/report/<slug>-logo.svg - not every
-// client has supplied one yet, so this returns the HTML for that badge
-// (an <img> tag, or '' to leave it empty) rather than assuming the file
-// exists.
+// client's own logo, expected at assets/report/<slug>-logo.(svg|png) - not
+// every client has supplied one yet, so this returns the HTML for that
+// badge (an <img> tag, or '' to leave it empty) rather than assuming the
+// file exists. Both extensions are tried since clients supply logos in
+// whatever format they have on hand (Isogreen: svg, Miradex: a
+// background-removed png).
+var CLIENT_LOGO_EXTENSIONS = ['svg', 'png'];
+
 async function copyReportAssets(cfg, outDir) {
   var assetsDir = path.join(outDir, 'reports', 'assets');
   await fs.mkdir(assetsDir, { recursive: true });
   var srcDir = new URL('../assets/report/', import.meta.url);
   await fs.copyFile(new URL('upfilm-logo-transparent.png', srcDir), path.join(assetsDir, 'upfilm-logo-transparent.png'));
 
-  var clientLogoFile = cfg.CLIENT_SLUG + '-logo.svg';
-  try {
-    await fs.copyFile(new URL(clientLogoFile, srcDir), path.join(assetsDir, clientLogoFile));
-    return '<img src="assets/' + clientLogoFile + '" alt="' + cfg.CLIENT_NAME + '">';
-  } catch (e) {
-    console.log('No report logo for client "' + cfg.CLIENT_SLUG + '" (expected assets/report/' + clientLogoFile + ') - left badge left empty.');
-    return '';
+  for (var ext of CLIENT_LOGO_EXTENSIONS) {
+    var clientLogoFile = cfg.CLIENT_SLUG + '-logo.' + ext;
+    try {
+      await fs.copyFile(new URL(clientLogoFile, srcDir), path.join(assetsDir, clientLogoFile));
+      return '<img src="assets/' + clientLogoFile + '" alt="' + cfg.CLIENT_NAME + '">';
+    } catch (e) { /* try the next extension */ }
   }
+  console.log('No report logo for client "' + cfg.CLIENT_SLUG + '" (expected assets/report/' + cfg.CLIENT_SLUG + '-logo.{svg,png}) - left badge left empty.');
+  return '';
 }
 
 // Builds the single Reports app page
