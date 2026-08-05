@@ -1,5 +1,29 @@
 import { fetchJson } from './http.js';
-import { matchContent, buildPlatformReport } from './notion.js';
+import { matchContent, buildPlatformReport, findById, daysApart } from './notion.js';
+
+// A cached "YouTube URL" is normally trusted unconditionally (that's the
+// whole point of caching - skip re-matching every run). But a row's "Data
+// Postare" can get rescheduled in Notion after the URL was first cached
+// (or, rarely, the URL was mistyped by hand), and nothing was ever
+// re-checking the cache against that - so a stale/wrong link would persist
+// silently forever once written.
+//
+// Tolerance is deliberately generous (real videos routinely post several
+// days later than their planned "Data Postare") - a stricter tolerance
+// looked appealing but a domain-vocabulary text-similarity check was tried
+// and rejected: on this narrow a topic (insulation/construction Shorts),
+// bigram overlap between two *unrelated* videos' descriptions routinely
+// scored above matchContent's own TEXT_MATCH_THRESHOLD just from shared
+// generic terms, so it couldn't reliably tell a wrong match from a real
+// one. A wide day gap (matches found empirically: legitimate late posts
+// were 3-7 days off; an actual wrong link was 18 days off) is the only
+// signal here that held up.
+var CACHE_DATE_TOLERANCE_DAYS = 10;
+
+function isCacheStillValid(row, cachedVideo) {
+  if (!cachedVideo || !row.postDate) return true; // can't verify - keep trusting it
+  return daysApart(row.postDate, cachedVideo.publishedAt) <= CACHE_DATE_TOLERANCE_DAYS;
+}
 
 export async function resolveUploadsPlaylistId(cfg) {
   var url = 'https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=' +
@@ -75,7 +99,7 @@ export async function syncYouTube(cfg, rows) {
   rows.forEach(function (row) {
     if (row.youtubeUrl) {
       var cachedId = extractYouTubeId(row.youtubeUrl);
-      if (cachedId) {
+      if (cachedId && isCacheStillValid(row, findById(videos, cachedId))) {
         plan.push({ row: row, id: cachedId, isNewMatch: false, method: 'cached', score: null });
         idsNeeded.push(cachedId);
         return;

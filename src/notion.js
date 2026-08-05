@@ -264,14 +264,19 @@ export function matchContent(postDate, rowText, candidates) {
   return null;
 }
 
-function candidatesForDate(postDate, candidates, dayTolerance) {
-  var targetMs = new Date(dateKeyInTz(postDate) + 'T00:00:00').getTime();
-  return candidates.filter(function (c) {
-    var ms = new Date(dateKeyInTz(c.publishedAt) + 'T00:00:00').getTime();
-    var diffDays = Math.round(Math.abs(ms - targetMs) / 86400000);
-    return diffDays <= dayTolerance;
-  });
+// Exported so youtube.js can sanity-check an already-cached URL against the
+// row's *current* "Data Postare" - see textMatches below for why date alone
+// isn't a safe invalidation signal on its own.
+export function daysApart(dateA, dateB) {
+  var msA = new Date(dateKeyInTz(dateA) + 'T00:00:00').getTime();
+  var msB = new Date(dateKeyInTz(dateB) + 'T00:00:00').getTime();
+  return Math.round(Math.abs(msA - msB) / 86400000);
 }
+
+function candidatesForDate(postDate, candidates, dayTolerance) {
+  return candidates.filter(function (c) { return daysApart(postDate, c.publishedAt) <= dayTolerance; });
+}
+
 
 function rankBySimilarity(target, candidates, getText) {
   return candidates
