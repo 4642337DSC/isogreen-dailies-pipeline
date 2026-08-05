@@ -56,20 +56,44 @@ export function richTextToString(prop) {
   return prop.rich_text.map(function (t) { return t.plain_text; }).join('');
 }
 
+// Notion writes used to be fire-and-forget (fetchJson's result was never
+// even captured), so a rate-limited or otherwise-rejected write failed
+// completely silently - no log line, no exception, nothing. That turned out
+// to be a real problem: running two backfill scripts against the same
+// integration token at once (each doing 1000+ sequential find+write calls)
+// tripped Notion's rate limit partway through, and most of a day's worth of
+// Facebook writes just vanished with zero trace. This wraps every write with
+// a few retries on rate-limiting and a loud console.log on anything else
+// that fails, so a re-run's log actually says what happened instead of
+// reporting a write count that was never verified.
+async function notionWrite(url, options, label) {
+  var maxAttempts = 4;
+  for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+    var result = await fetchJson(url, options);
+    if (!result || result.object !== 'error') return result;
+    if (result.code === 'rate_limited' && attempt < maxAttempts) {
+      await new Promise(function (resolve) { setTimeout(resolve, attempt * 800); });
+      continue;
+    }
+    console.log('Notion write failed (' + label + '): ' + result.message);
+    return result;
+  }
+}
+
 export async function updateNotionPage(cfg, pageId, properties) {
-  await fetchJson('https://api.notion.com/v1/pages/' + pageId, {
+  return notionWrite('https://api.notion.com/v1/pages/' + pageId, {
     method: 'PATCH',
     headers: notionHeaders(cfg),
     body: JSON.stringify({ properties: properties })
-  });
+  }, 'update ' + pageId);
 }
 
 export async function createNotionPage(cfg, databaseId, properties) {
-  await fetchJson('https://api.notion.com/v1/pages', {
+  return notionWrite('https://api.notion.com/v1/pages', {
     method: 'POST',
     headers: notionHeaders(cfg),
     body: JSON.stringify({ parent: { database_id: databaseId }, properties: properties })
-  });
+  }, 'create in ' + databaseId);
 }
 
 // Moves a page to Notion's trash - for one-time cleanup of bad historical
