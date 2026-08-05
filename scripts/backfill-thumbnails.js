@@ -5,9 +5,9 @@ import { fetchNotionRows } from '../src/notion.js';
 import { syncThumbnails } from '../src/thumbnails.js';
 
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
-var THUMBS_DIR = path.join(__dirname, '..', 'dist', 'clients', 'isogreen', 'thumbs');
 
 var cfg = getConfig();
 requireConfig(cfg);
+var THUMBS_DIR = path.join(__dirname, '..', 'dist', 'clients', cfg.CLIENT_SLUG, 'thumbs');
 var rows = await fetchNotionRows(cfg);
 await syncThumbnails(cfg, rows, THUMBS_DIR);

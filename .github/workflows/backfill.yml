@@ -3,6 +3,13 @@ name: Manual backfill
 on:
   workflow_dispatch:
     inputs:
+      client:
+        description: Which client to run the backfill for
+        required: true
+        type: choice
+        options:
+          - isogreen
+          - miradex
       script:
         description: Which backfill to run
         required: true
@@ -33,21 +40,30 @@ jobs:
 
       - name: Run backfill
         env:
+          CLIENT_SLUG: ${{ github.event.inputs.client }}
+          CLIENT_NAME: ${{ github.event.inputs.client == 'isogreen' && 'ISOGREEN' || 'MIRADEX' }}
+          NOTION_FILTER_TIP: ${{ github.event.inputs.client == 'isogreen' && 'true' || 'false' }}
+          YT_FIELD_NAME: ${{ github.event.inputs.client == 'miradex' && 'V7Z - Yt Shorts' || 'YouTube' }}
+          FB_FIELD_NAME: ${{ github.event.inputs.client == 'miradex' && 'V7Z - Fb' || 'Facebook' }}
+          IG_FIELD_NAME: ${{ github.event.inputs.client == 'miradex' && 'V7Z - Insta' || 'Instagram' }}
+          TT_FIELD_NAME: ${{ github.event.inputs.client == 'miradex' && 'V7Z - TikTok' || 'TikTok' }}
+          # Shared across clients - same Google Cloud project / Notion integration / Zernio account.
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
-          CHANNEL_HANDLE: ${{ secrets.CHANNEL_HANDLE }}
-          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
-          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
-          ZERNIO_TIKTOK_ACCOUNT_ID: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID }}
-          CHANNEL_STATS_DATABASE_ID: ${{ secrets.CHANNEL_STATS_DATABASE_ID }}
-          MONTHLY_VIEWS_DATABASE_ID: ${{ secrets.MONTHLY_VIEWS_DATABASE_ID }}
-          DAILY_VIEWS_DATABASE_ID: ${{ secrets.DAILY_VIEWS_DATABASE_ID }}
-          FOLLOWER_SNAPSHOTS_DATABASE_ID: ${{ secrets.FOLLOWER_SNAPSHOTS_DATABASE_ID }}
-          YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
-          YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
-          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          # Per-client - looked up as <CLIENT>_<NAME> from repo secrets.
+          NOTION_DATABASE_ID: ${{ secrets[format('{0}_NOTION_DATABASE_ID', github.event.inputs.client)] }}
+          CHANNEL_HANDLE: ${{ secrets[format('{0}_CHANNEL_HANDLE', github.event.inputs.client)] }}
+          FB_PAGE_ID: ${{ secrets[format('{0}_FB_PAGE_ID', github.event.inputs.client)] }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets[format('{0}_FB_PAGE_ACCESS_TOKEN', github.event.inputs.client)] }}
+          ZERNIO_TIKTOK_ACCOUNT_ID: ${{ secrets[format('{0}_ZERNIO_TIKTOK_ACCOUNT_ID', github.event.inputs.client)] }}
+          CHANNEL_STATS_DATABASE_ID: ${{ secrets[format('{0}_CHANNEL_STATS_DATABASE_ID', github.event.inputs.client)] }}
+          MONTHLY_VIEWS_DATABASE_ID: ${{ secrets[format('{0}_MONTHLY_VIEWS_DATABASE_ID', github.event.inputs.client)] }}
+          DAILY_VIEWS_DATABASE_ID: ${{ secrets[format('{0}_DAILY_VIEWS_DATABASE_ID', github.event.inputs.client)] }}
+          FOLLOWER_SNAPSHOTS_DATABASE_ID: ${{ secrets[format('{0}_FOLLOWER_SNAPSHOTS_DATABASE_ID', github.event.inputs.client)] }}
+          YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets[format('{0}_YOUTUBE_OAUTH_CLIENT_ID', github.event.inputs.client)] }}
+          YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets[format('{0}_YOUTUBE_OAUTH_CLIENT_SECRET', github.event.inputs.client)] }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets[format('{0}_YOUTUBE_REFRESH_TOKEN', github.event.inputs.client)] }}
         run: npm run backfill:${{ github.event.inputs.script }}
 
       # Overlays this run's dist/clients/ onto the existing public repo
