@@ -39,6 +39,31 @@ async function copyReportAssets(cfg, outDir) {
   return '';
 }
 
+// Where the report page's "materials" footer link points, per client.
+// Isogreen has always had one evergreen folder for everything ("static").
+// Miradex organizes source footage into per-month Drive subfolders instead
+// (only 2026's folders exist so far - other months simply won't show a
+// link, see MATERIALS_LINKS handling in ReportTemplate.html's render()).
+var MATERIALS_LINKS = {
+  isogreen: { static: 'https://drive.google.com/open?id=1iG3hui_QPBj9qK22AVFlbywQZzq2YjC8&usp=drive_fs' },
+  miradex: {
+    byMonth: {
+      '2026-01': '1uTLUcZEOMelCCBMlgpiiicPOk4mi8tyk',
+      '2026-02': '1LTlAUmzg8IIyCQKKEQmem4y8u5w-sBHG',
+      '2026-03': '1tuwwlmuJ2WxmjXZbMmrLnrhKi7x-7BQE',
+      '2026-04': '1y2eHWJSaUKcgcoByuCPgLXPIxj19aN-m',
+      '2026-05': '17hUinrsUybgvGsTbRBHihzxkdk4rL_Tw',
+      '2026-06': '1j5H3wVkFLMSxj0n6v3E97NrsjNs8ctWG',
+      '2026-07': '1lDsBhFRDyv2qjYbrc813gCn4Tdzbjp7h',
+      '2026-08': '1XDmMGtGA8iD6z8vIOEP5UFnidex2nyqt',
+      '2026-09': '1Al_EI77ly2CtfZLMt7viBjKSVR57SzEb',
+      '2026-10': '1cZpefmjllhXUQnyjOcBDXUxQmQTRA_Gb',
+      '2026-11': '1LS2VIsbFExsd_8TjIQRg6FBwz2n53gov',
+      '2026-12': '18mCm5s0PlVu79LyiP8K1uYllb_lcn8fK'
+    }
+  }
+};
+
 // Builds the single Reports app page
 // (dist/clients/<client>/reports/index.html) - a self-contained page that
 // embeds every month's data (same rows/monthly/followerSnapshots
@@ -59,6 +84,7 @@ export async function buildReportsApp(cfg, data, outDir) {
     .replace('/*__MONTHLY_VIEWS_DATA__*/', JSON.stringify(data.monthly))
     .replace('/*__FOLLOWER_SNAPSHOTS_DATA__*/', JSON.stringify(data.followerSnapshots))
     .replace('/*__CLIENT_LOGO_BADGE__*/', clientLogoBadge)
+    .replace('/*__MATERIALS_LINKS_DATA__*/', JSON.stringify(MATERIALS_LINKS[cfg.CLIENT_SLUG] || {}))
     .split('__CLIENT_NAME__').join(cfg.CLIENT_NAME);
 
   var reportsDir = path.join(outDir, 'reports');

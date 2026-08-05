@@ -249,7 +249,7 @@ footer a { color: var(--accent); }
 
   <div class="month-note">Devizul corespunde lunii <b id="monthNoteLabel"></b></div>
   <div class="footer-logo"><img src="assets/upfilm-logo-transparent.png" alt="Upfilm"></div>
-  <footer>Toate materialele produse pot fi găsite <a href="https://drive.google.com/open?id=1iG3hui_QPBj9qK22AVFlbywQZzq2YjC8&usp=drive_fs" target="_blank" rel="noopener">aici</a></footer>
+  <footer id="materialsFooter">Toate materialele produse pot fi găsite <a id="materialsLink" href="#" target="_blank" rel="noopener">aici</a></footer>
   <div class="caveat">Vizualizările Facebook/Instagram/YouTube provin din API-ul propriu al fiecărei platforme (nu din Meta Business Suite). TikTok este estimat din vizualizările curente ale materialelor postate în lună, neavând un API de tip serie istorică — editabil mai sus. Cifra Facebook poate diferi semnificativ de valoarea folosită precedent „3 second view” din Meta Business Suite, care folosește o definiție mai permisivă a unei vizualizări.</div>
 </div>
 
@@ -257,6 +257,12 @@ footer a { color: var(--accent); }
 var RAW = /*__RAW_DATA__*/;
 var MONTHLY_VIEWS = /*__MONTHLY_VIEWS_DATA__*/;
 var FOLLOWER_SNAPSHOTS = /*__FOLLOWER_SNAPSHOTS_DATA__*/;
+// Where to point the "materials" footer link for this client - either a
+// single link shown for every month ({static: url}), or a per-month
+// {"YYYY-MM": driveFolderId} map for clients whose source footage is
+// organized into monthly Drive subfolders (the link is hidden for any
+// month not in the map, rather than pointing somewhere wrong).
+var MATERIALS_LINKS = /*__MATERIALS_LINKS_DATA__*/;
 
 var MONTH_NAMES_RO = [
   "Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie",
@@ -446,6 +452,16 @@ function render() {
   document.getElementById("networkViews").innerHTML = buildNetworkViewsHtml(ym, monthRows, MONTHLY_VIEWS);
   document.getElementById("followerStats").innerHTML = buildFollowerStatsHtml(ym, FOLLOWER_SNAPSHOTS);
   document.title = "__CLIENT_NAME__ - " + monthLabel + " - deviz";
+
+  var materialsUrl = MATERIALS_LINKS.static ||
+    (MATERIALS_LINKS.byMonth && MATERIALS_LINKS.byMonth[ym] && ("https://drive.google.com/drive/folders/" + MATERIALS_LINKS.byMonth[ym]));
+  var materialsFooter = document.getElementById("materialsFooter");
+  if (materialsUrl) {
+    document.getElementById("materialsLink").href = materialsUrl;
+    materialsFooter.style.display = "";
+  } else {
+    materialsFooter.style.display = "none";
+  }
 }
 
 populateSelectors();
