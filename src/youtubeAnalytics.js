@@ -102,8 +102,13 @@ export async function fetchYouTubeDailyFollowers(cfg, start, end, currentCount) 
 // Empty rows are a real, common case for very recently published videos -
 // same ~2-3 day processing lag as fetchYouTubeDailyViews - not an error,
 // just nothing to report yet.
-export async function fetchYouTubeVideoRetention(cfg, videoId) {
-  var accessToken = await getYouTubeAccessToken(cfg);
+//
+// Takes an already-minted accessToken (not cfg) - the caller loops this
+// once per matched video (up to a few hundred per sync), and re-running
+// the OAuth token refresh handshake that many times was pure waste (plus
+// needless load on Google's token endpoint) when one token comfortably
+// covers a whole sync run.
+export async function fetchYouTubeVideoRetention(accessToken, videoId) {
   var url = 'https://youtubeanalytics.googleapis.com/v2/reports?' + new URLSearchParams({
     ids: 'channel==MINE',
     metrics: 'audienceWatchRatio,relativeRetentionPerformance',
@@ -134,10 +139,10 @@ export async function fetchYouTubeVideoRetention(cfg, videoId) {
 // many videos per call via dimensions=video with a comma-separated filter -
 // much cheaper than the per-video retention call above. Batch size matches
 // fetchYouTubeViewCounts' Data API v3 batching (50) for consistency, though
-// this endpoint isn't confirmed to share that exact limit.
-export async function fetchYouTubeAvgWatchStats(cfg, videoIds) {
+// this endpoint isn't confirmed to share that exact limit. Takes an
+// already-minted accessToken - see fetchYouTubeVideoRetention's comment.
+export async function fetchYouTubeAvgWatchStats(accessToken, videoIds) {
   var unique = videoIds.filter(function (id, i) { return videoIds.indexOf(id) === i; });
-  var accessToken = await getYouTubeAccessToken(cfg);
   var stats = {};
   for (var i = 0; i < unique.length; i += 50) {
     var batch = unique.slice(i, i + 50);

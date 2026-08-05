@@ -1,6 +1,6 @@
 import { fetchJson } from './http.js';
 import { matchContent, buildPlatformReport, findById, daysApart } from './notion.js';
-import { fetchYouTubeVideoRetention, fetchYouTubeAvgWatchStats } from './youtubeAnalytics.js';
+import { fetchYouTubeVideoRetention, fetchYouTubeAvgWatchStats, getYouTubeAccessToken } from './youtubeAnalytics.js';
 
 // A cached "YouTube URL" is normally trusted unconditionally (that's the
 // whole point of caching - skip re-matching every run). But a row's "Data
@@ -134,7 +134,21 @@ export async function syncYouTube(cfg, rows) {
   });
 
   var stats = await fetchYouTubeViewCounts(cfg, idsNeeded);
-  var avgWatchStats = await fetchYouTubeAvgWatchStats(cfg, idsNeeded);
+
+  // Retention/hook-rate/avg-watch all need the Analytics API (OAuth), not
+  // the plain Data API key used for views/duration/likes/comments above -
+  // guarded the same way sync.js gates Facebook/Instagram/TikTok on their
+  // own credentials, so a client without OAuth configured still gets the
+  // Data API v3 metrics rather than crashing the whole YouTube sync. Token
+  // is minted once here and passed through, not re-minted per video - see
+  // fetchYouTubeVideoRetention's comment.
+  var ytAnalyticsEnabled = !!(cfg.YOUTUBE_OAUTH_CLIENT_ID && cfg.YOUTUBE_OAUTH_CLIENT_SECRET && cfg.YOUTUBE_REFRESH_TOKEN);
+  var avgWatchStats = {};
+  var accessToken = null;
+  if (ytAnalyticsEnabled) {
+    accessToken = await getYouTubeAccessToken(cfg);
+    avgWatchStats = await fetchYouTubeAvgWatchStats(accessToken, idsNeeded);
+  }
 
   var results = [];
   for (var p of plan) {
@@ -144,7 +158,7 @@ export async function syncYouTube(cfg, rows) {
     // The one genuinely expensive call here (no batching available for
     // this dimension) - same cost pattern already accepted for Instagram's
     // per-media engagement fetch.
-    var retentionData = await fetchYouTubeVideoRetention(cfg, p.id);
+    var retentionData = ytAnalyticsEnabled ? await fetchYouTubeVideoRetention(accessToken, p.id) : null;
     results.push({
       row: p.row, views: stat.views, duration: stat.duration, likes: stat.likes, comments: stat.comments,
       avgWatchTimeS: avgWatch.avgWatchTimeS, avgWatchPct: avgWatch.avgWatchPct,
