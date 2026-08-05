@@ -357,6 +357,7 @@ export function buildUpdatePayloads(cfg, rows, yt, fb, ig, tt) {
     setNum(props, 'YT Likes', r.likes);
     setNum(props, 'YT Comments', r.comments);
     setNum(props, 'YT Hook Rate', r.hookRate);
+    setNum(props, 'YT Retention @3s', r.retentionAt3s);
     setNum(props, 'YT Avg Watch %', r.avgWatchPct);
     setNum(props, 'YT Avg Watch Time (s)', r.avgWatchTimeS);
     if (typeof r.relativeRetentionPerformance === 'number') {

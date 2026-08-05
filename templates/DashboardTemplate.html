@@ -34,6 +34,7 @@
     --accent-ink:#ffffff;
     --accent-wash: rgba(91,63,174,0.08);
     --good:      #0ca30c;
+    --bad:       #d1453b;
 
     /* platform brand colors (official, light-mode step) */
     --p-yt: #FF0000;  /* YouTube red */
@@ -65,6 +66,7 @@
       --accent-ink:#0d0d0d;
       --accent-wash: rgba(143,127,224,0.14);
       --good:      #0ca30c;
+      --bad:       #e5695f;
       --p-yt: #FF453B;
       --p-tt: #0DA89F;
       --p-ig: #C061E0;
@@ -86,6 +88,7 @@
     --accent-ink:#0d0d0d;
     --accent-wash: rgba(143,127,224,0.14);
     --good:      #0ca30c;
+    --bad:       #e5695f;
     --p-yt: #FF453B;
     --p-tt: #0DA89F;
     --p-ig: #C061E0;
@@ -858,15 +861,30 @@
   }
   .detail-stat-row + .detail-stat-row { border-top: 1px dashed var(--border); }
   .detail-stat-label { color: var(--muted); }
+  .detail-stat-value-wrap { display: flex; align-items: baseline; gap: 7px; }
   .detail-stat-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .detail-stat-delta { font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .detail-stat-delta.good { color: var(--good); }
+  .detail-stat-delta.bad { color: var(--bad); }
+  .detail-stat-delta.flat { color: var(--muted); }
   .detail-empty-note { font-size: 12.5px; color: var(--muted); }
 
+  .detail-transcript-toggle {
+    align-self: flex-start;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  .detail-transcript-toggle:hover { text-decoration: underline; }
   .detail-transcript {
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 12px 14px;
-    max-height: 140px;
-    overflow-y: auto;
     font-size: 13px;
     line-height: 1.6;
     color: var(--ink-2);
@@ -2169,35 +2187,69 @@
   function fmtSeconds(n) { return n === null || n === undefined ? "—" : n.toFixed(1) + "s"; }
   var DETAIL_METRICS = {
     yt: [
-      { label: "Likes", value: function (d) { return d.yt.likes; }, fmt: fmtFull },
-      { label: "Comments", value: function (d) { return d.yt.comments; }, fmt: fmtFull },
-      { label: "Hook rate (past 3s)", value: function (d) { return d.yt.hookRate; }, fmt: fmtPct },
-      { label: "Avg % watched", value: function (d) { return d.yt.avgWatchPct; }, fmt: fmtPct },
-      { label: "Avg watch time", value: function (d) { return d.yt.avgWatchTimeS; }, fmt: fmtSeconds },
-      { label: "Retention vs similar", value: function (d) { return d.yt.retentionVsSimilar; }, fmt: fmtPct }
+      { label: "Likes", value: function (d) { return d.yt.likes; }, fmt: fmtFull, compare: true },
+      { label: "Comments", value: function (d) { return d.yt.comments; }, fmt: fmtFull, compare: true },
+      { label: "Hook rate (past 3s)", value: function (d) { return d.yt.hookRate; }, fmt: fmtPct, compare: true },
+      { label: "Retention @3s", value: function (d) { return d.yt.retentionAt3s; }, fmt: fmtPct, compare: true },
+      { label: "Avg % watched", value: function (d) { return d.yt.avgWatchPct; }, fmt: fmtPct, compare: true },
+      { label: "Avg watch time", value: function (d) { return d.yt.avgWatchTimeS; }, fmt: fmtSeconds, compare: true },
+      { label: "Retention vs similar", value: function (d) { return d.yt.retentionVsSimilar; }, fmt: fmtPct, compare: false }
     ],
     fb: [
-      { label: "Likes", value: function (d) { return d.fb.likes; }, fmt: fmtFull },
-      { label: "Hook rate (past 6s)", value: function (d) { return d.fb.hookRate; }, fmt: fmtPct },
-      { label: "Avg % watched", value: function (d) { return d.fb.avgWatchPct; }, fmt: fmtPct },
-      { label: "Avg watch time", value: function (d) { return d.fb.avgWatchTimeS; }, fmt: fmtSeconds }
+      { label: "Likes", value: function (d) { return d.fb.likes; }, fmt: fmtFull, compare: true },
+      { label: "Hook rate (past 6s)", value: function (d) { return d.fb.hookRate; }, fmt: fmtPct, compare: true },
+      { label: "Avg % watched", value: function (d) { return d.fb.avgWatchPct; }, fmt: fmtPct, compare: true },
+      { label: "Avg watch time", value: function (d) { return d.fb.avgWatchTimeS; }, fmt: fmtSeconds, compare: true }
     ],
     ig: [
-      { label: "Likes", value: function (d) { return d.ig.likes; }, fmt: fmtFull },
-      { label: "Comments", value: function (d) { return d.ig.comments; }, fmt: fmtFull },
-      { label: "Saves", value: function (d) { return d.ig.saves; }, fmt: fmtFull },
-      { label: "Shares", value: function (d) { return d.ig.shares; }, fmt: fmtFull },
-      { label: "Hook rate (past 3s)", value: function (d) { return d.ig.hookRate; }, fmt: fmtPct },
-      { label: "Avg % watched", value: function (d) { return d.ig.avgWatchPct; }, fmt: fmtPct },
-      { label: "Avg watch time", value: function (d) { return d.ig.avgWatchTimeS; }, fmt: fmtSeconds }
+      { label: "Likes", value: function (d) { return d.ig.likes; }, fmt: fmtFull, compare: true },
+      { label: "Comments", value: function (d) { return d.ig.comments; }, fmt: fmtFull, compare: true },
+      { label: "Saves", value: function (d) { return d.ig.saves; }, fmt: fmtFull, compare: true },
+      { label: "Shares", value: function (d) { return d.ig.shares; }, fmt: fmtFull, compare: true },
+      { label: "Hook rate (past 3s)", value: function (d) { return d.ig.hookRate; }, fmt: fmtPct, compare: true },
+      { label: "Avg % watched", value: function (d) { return d.ig.avgWatchPct; }, fmt: fmtPct, compare: true },
+      { label: "Avg watch time", value: function (d) { return d.ig.avgWatchTimeS; }, fmt: fmtSeconds, compare: true }
     ],
     tt: [
-      { label: "Likes", value: function (d) { return d.tt.likes; }, fmt: fmtFull },
-      { label: "Comments", value: function (d) { return d.tt.comments; }, fmt: fmtFull },
-      { label: "Shares", value: function (d) { return d.tt.shares; }, fmt: fmtFull },
-      { label: "Saves", value: function (d) { return d.tt.saves; }, fmt: fmtFull }
+      { label: "Likes", value: function (d) { return d.tt.likes; }, fmt: fmtFull, compare: true },
+      { label: "Comments", value: function (d) { return d.tt.comments; }, fmt: fmtFull, compare: true },
+      { label: "Shares", value: function (d) { return d.tt.shares; }, fmt: fmtFull, compare: true },
+      { label: "Saves", value: function (d) { return d.tt.saves; }, fmt: fmtFull, compare: true }
     ]
   };
+
+  // Channel-wide average per metric, computed once from every video's
+  // VIDEO_DETAILS entry (not just the ones currently filtered/visible in
+  // the table - "channel average" should mean the whole channel). Skips
+  // nulls rather than treating them as 0, so a metric only a handful of
+  // videos have data for isn't dragged toward zero by the rest.
+  function computeChannelAverages() {
+    var sums = {}, counts = {};
+    Object.keys(DETAIL_METRICS).forEach(function (platformKey) {
+      sums[platformKey] = {};
+      counts[platformKey] = {};
+      DETAIL_METRICS[platformKey].forEach(function (spec) { sums[platformKey][spec.label] = 0; counts[platformKey][spec.label] = 0; });
+    });
+    Object.keys(VIDEO_DETAILS).forEach(function (cod) {
+      var detail = VIDEO_DETAILS[cod];
+      Object.keys(DETAIL_METRICS).forEach(function (platformKey) {
+        DETAIL_METRICS[platformKey].forEach(function (spec) {
+          var v = spec.value(detail);
+          if (typeof v === "number") { sums[platformKey][spec.label] += v; counts[platformKey][spec.label]++; }
+        });
+      });
+    });
+    var averages = {};
+    Object.keys(sums).forEach(function (platformKey) {
+      averages[platformKey] = {};
+      Object.keys(sums[platformKey]).forEach(function (label) {
+        var n = counts[platformKey][label];
+        averages[platformKey][label] = n ? sums[platformKey][label] / n : null;
+      });
+    });
+    return averages;
+  }
+  var CHANNEL_AVERAGES = computeChannelAverages();
 
   function buildPlatformPanel(p, r, detail) {
     var specs = DETAIL_METRICS[p.key];
@@ -2231,10 +2283,30 @@
       var label = document.createElement("span");
       label.className = "detail-stat-label";
       label.textContent = spec.label;
+
+      var valueWrap = document.createElement("span");
+      valueWrap.className = "detail-stat-value-wrap";
+      var v = spec.value(detail);
       var value = document.createElement("span");
       value.className = "detail-stat-value";
-      value.textContent = spec.fmt(spec.value(detail));
-      row.appendChild(label); row.appendChild(value);
+      value.textContent = spec.fmt(v);
+      valueWrap.appendChild(value);
+
+      // Channel average is a comparison in its own right, and every
+      // compare:true metric here is "more is better" (likes, watch time,
+      // hook rate, etc.) - no per-metric direction needed.
+      if (spec.compare && typeof v === "number") {
+        var avg = CHANNEL_AVERAGES[p.key] ? CHANNEL_AVERAGES[p.key][spec.label] : null;
+        if (typeof avg === "number" && avg !== 0) {
+          var deltaPct = Math.round(((v - avg) / avg) * 1000) / 10;
+          var delta = document.createElement("span");
+          delta.className = "detail-stat-delta " + (Math.abs(deltaPct) < 3 ? "flat" : (deltaPct > 0 ? "good" : "bad"));
+          delta.textContent = (deltaPct > 0 ? "+" : "") + deltaPct.toFixed(1) + "% vs avg";
+          valueWrap.appendChild(delta);
+        }
+      }
+
+      row.appendChild(label); row.appendChild(valueWrap);
       panel.appendChild(row);
     });
     return panel;
@@ -2335,9 +2407,22 @@
       transcriptLabel.className = "detail-section-label";
       transcriptLabel.textContent = "Transcript";
       transcriptWrap.appendChild(transcriptLabel);
+
       var transcriptBody = document.createElement("div");
       transcriptBody.className = "detail-transcript";
       transcriptBody.textContent = r.transcript;
+      transcriptBody.style.display = "none";
+
+      var transcriptToggle = document.createElement("button");
+      transcriptToggle.type = "button";
+      transcriptToggle.className = "detail-transcript-toggle";
+      transcriptToggle.textContent = "Show transcript";
+      transcriptToggle.addEventListener("click", function () {
+        var showing = transcriptBody.style.display !== "none";
+        transcriptBody.style.display = showing ? "none" : "block";
+        transcriptToggle.textContent = showing ? "Show transcript" : "Hide transcript";
+      });
+      transcriptWrap.appendChild(transcriptToggle);
       transcriptWrap.appendChild(transcriptBody);
       body.appendChild(transcriptWrap);
     }
@@ -2371,9 +2456,16 @@
     engagementWrap.appendChild(grid);
     body.appendChild(engagementWrap);
 
+    // Only ever push a series once its points are confirmed non-empty -
+    // toRatioSeries can come back null (e.g. Facebook retention exists but
+    // this row's YouTube-sourced duration doesn't, a rare real gap), and a
+    // null-points entry here would previously still count toward the
+    // legend/"which platforms are shown" logic below while never actually
+    // being drawn - legend claiming a platform that isn't on the chart.
     var retentionSeries = [];
     if (detail.fb && detail.fb.retention) {
-      retentionSeries.push({ platform: "Facebook", color: "var(--p-fb)", points: toRatioSeries(detail.fb.retention, detail.durationS) });
+      var fbPoints = toRatioSeries(detail.fb.retention, detail.durationS);
+      if (fbPoints) retentionSeries.push({ platform: "Facebook", color: "var(--p-fb)", points: fbPoints });
     }
     if (detail.yt && detail.yt.retention) {
       retentionSeries.push({ platform: "YouTube", color: "var(--p-yt)", points: detail.yt.retention });

@@ -94,13 +94,16 @@ export function extractYouTubeId(url) {
   return m ? m[1] : null;
 }
 
-// Hook rate is framed the same way as Facebook/Instagram: "% of the
-// audience still watching" at a fixed ~3-second mark, not a raw API field
-// (YouTube has none). Since YouTube's retention curve is bucketed by %
-// of video elapsed rather than seconds, this converts 3 seconds into that
-// video's own elapsed-ratio scale using its duration, then picks whichever
-// bucket lands closest to it.
-export function pickHookRate(retention, duration) {
+// A sample point plucked straight off the retention curve at ~3 seconds in -
+// NOT the same thing as "hook rate" (see fetchYouTubeAvgWatchStats for that,
+// sourced from engagedViews instead). This one inherits the retention
+// curve's replay-inflation quirk and can read well above 100%, so it's
+// labeled "Retention @3s" rather than "Hook Rate" to avoid implying parity
+// with Facebook/Instagram's capped, replay-free hook-rate numbers. Since
+// the curve is bucketed by % of video elapsed rather than seconds, this
+// converts 3 seconds into that video's own elapsed-ratio scale using its
+// duration, then picks whichever bucket lands closest to it.
+export function pickRetentionAt3s(retention, duration) {
   if (!retention || !duration) return null;
   var targetRatio = 3 / duration;
   var closestKey = null;
@@ -161,8 +164,8 @@ export async function syncYouTube(cfg, rows) {
     var retentionData = ytAnalyticsEnabled ? await fetchYouTubeVideoRetention(accessToken, p.id) : null;
     results.push({
       row: p.row, views: stat.views, duration: stat.duration, likes: stat.likes, comments: stat.comments,
-      avgWatchTimeS: avgWatch.avgWatchTimeS, avgWatchPct: avgWatch.avgWatchPct,
-      hookRate: retentionData ? pickHookRate(retentionData.retention, stat.duration) : null,
+      avgWatchTimeS: avgWatch.avgWatchTimeS, avgWatchPct: avgWatch.avgWatchPct, hookRate: avgWatch.hookRate,
+      retentionAt3s: retentionData ? pickRetentionAt3s(retentionData.retention, stat.duration) : null,
       retention: retentionData ? retentionData.retention : null,
       relativeRetentionPerformance: retentionData ? retentionData.relativeRetentionPerformance : null,
       isNewMatch: p.isNewMatch, method: p.method, score: p.score,

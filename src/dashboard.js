@@ -60,7 +60,8 @@ export function buildVideoDetail(page) {
     durationS: numOrNull(props['Duration (s)']),
     yt: {
       likes: numOrNull(props['YT Likes']), comments: numOrNull(props['YT Comments']),
-      hookRate: numOrNull(props['YT Hook Rate']), avgWatchPct: numOrNull(props['YT Avg Watch %']),
+      hookRate: numOrNull(props['YT Hook Rate']), retentionAt3s: numOrNull(props['YT Retention @3s']),
+      avgWatchPct: numOrNull(props['YT Avg Watch %']),
       avgWatchTimeS: numOrNull(props['YT Avg Watch Time (s)']),
       retentionVsSimilar: numOrNull(props['YT Retention vs Similar']),
       retention: retentionOrNull(props['YT Retention Graph'])

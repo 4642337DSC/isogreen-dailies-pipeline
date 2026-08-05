@@ -135,12 +135,23 @@ export async function fetchYouTubeVideoRetention(accessToken, videoId) {
   return { retention: retention, relativeRetentionPerformance: avgRelPerf };
 }
 
-// Avg watch duration (seconds) + avg % of video watched, batched across
-// many videos per call via dimensions=video with a comma-separated filter -
-// much cheaper than the per-video retention call above. Batch size matches
-// fetchYouTubeViewCounts' Data API v3 batching (50) for consistency, though
-// this endpoint isn't confirmed to share that exact limit. Takes an
-// already-minted accessToken - see fetchYouTubeVideoRetention's comment.
+// Avg watch duration (seconds) + avg % of video watched + engagedViews,
+// batched across many videos per call via dimensions=video with a comma-
+// separated filter - much cheaper than the per-video retention call above.
+// Batch size matches fetchYouTubeViewCounts' Data API v3 batching (50) for
+// consistency, though this endpoint isn't confirmed to share that exact
+// limit. Takes an already-minted accessToken - see
+// fetchYouTubeVideoRetention's comment.
+//
+// engagedViews is a real, separate metric (confirmed live) - Studio's
+// "hook rate" for Shorts is engagedViews/views, i.e. the inverse of
+// "swiped away %", which has no metric of its own but doesn't need one
+// once engagedViews is available. This is framed the same way as
+// Facebook/Instagram's hook rate (a plain 0-100% "did they stay" number) -
+// unlike the replay-inflated audienceWatchRatio-based figure from the
+// retention curve, which is kept separately (see pickRetentionAt3s in
+// youtube.js, labeled "Retention @3s" rather than "Hook Rate" to avoid
+// implying the two are the same measurement).
 export async function fetchYouTubeAvgWatchStats(accessToken, videoIds) {
   var unique = videoIds.filter(function (id, i) { return videoIds.indexOf(id) === i; });
   var stats = {};
@@ -148,7 +159,7 @@ export async function fetchYouTubeAvgWatchStats(accessToken, videoIds) {
     var batch = unique.slice(i, i + 50);
     var url = 'https://youtubeanalytics.googleapis.com/v2/reports?' + new URLSearchParams({
       ids: 'channel==MINE',
-      metrics: 'averageViewDuration,averageViewPercentage',
+      metrics: 'views,averageViewDuration,averageViewPercentage,engagedViews',
       dimensions: 'video',
       filters: 'video==' + batch.join(','),
       startDate: '2020-01-01',
@@ -157,7 +168,12 @@ export async function fetchYouTubeAvgWatchStats(accessToken, videoIds) {
     var data = await fetchJson(url, { headers: { Authorization: 'Bearer ' + accessToken } });
     if (data.error) { console.log('YouTube avg watch stats fetch failed: ' + JSON.stringify(data.error)); continue; }
     (data.rows || []).forEach(function (row) {
-      stats[row[0]] = { avgWatchTimeS: row[1], avgWatchPct: row[2] };
+      var views = row[1], engagedViews = row[4];
+      stats[row[0]] = {
+        avgWatchTimeS: row[2], avgWatchPct: row[3],
+        hookRate: (typeof views === 'number' && views > 0 && typeof engagedViews === 'number')
+          ? Math.round((engagedViews / views) * 1000) / 10 : null
+      };
     });
   }
   return stats;
