@@ -9,20 +9,33 @@ async function loadFontFace() {
 }
 
 // Copies the shared brand assets (assets/report/*) into
-// dist/clients/isogreen/reports/assets/ - a plain file copy, not embedded
+// dist/clients/<client>/reports/assets/ - a plain file copy, not embedded
 // as base64, since these are static images shared by the one report page
 // rather than something that needs to travel inside a portable HTML file
 // (unlike the font, which is spliced in from DashboardTemplate.html).
-async function copyReportAssets(outDir) {
+// Upfilm's own logo is shared by every client; the left badge is each
+// client's own logo, expected at assets/report/<slug>-logo.svg - not every
+// client has supplied one yet, so this returns the HTML for that badge
+// (an <img> tag, or '' to leave it empty) rather than assuming the file
+// exists.
+async function copyReportAssets(cfg, outDir) {
   var assetsDir = path.join(outDir, 'reports', 'assets');
   await fs.mkdir(assetsDir, { recursive: true });
   var srcDir = new URL('../assets/report/', import.meta.url);
   await fs.copyFile(new URL('upfilm-logo-transparent.png', srcDir), path.join(assetsDir, 'upfilm-logo-transparent.png'));
-  await fs.copyFile(new URL('isogreen-logo.svg', srcDir), path.join(assetsDir, 'isogreen-logo.svg'));
+
+  var clientLogoFile = cfg.CLIENT_SLUG + '-logo.svg';
+  try {
+    await fs.copyFile(new URL(clientLogoFile, srcDir), path.join(assetsDir, clientLogoFile));
+    return '<img src="assets/' + clientLogoFile + '" alt="' + cfg.CLIENT_NAME + '">';
+  } catch (e) {
+    console.log('No report logo for client "' + cfg.CLIENT_SLUG + '" (expected assets/report/' + clientLogoFile + ') - left badge left empty.');
+    return '';
+  }
 }
 
 // Builds the single Reports app page
-// (dist/clients/isogreen/reports/index.html) - a self-contained page that
+// (dist/clients/<client>/reports/index.html) - a self-contained page that
 // embeds every month's data (same rows/monthly/followerSnapshots
 // buildDashboard already fetched) plus a year/month picker, and renders
 // the report entirely client-side when a month is selected. Rebuilt on
@@ -30,7 +43,7 @@ async function copyReportAssets(outDir) {
 // data-embedding page, not a per-month pre-render, so there's nothing to
 // overwrite or go stale between syncs.
 export async function buildReportsApp(cfg, data, outDir) {
-  await copyReportAssets(outDir);
+  var clientLogoBadge = await copyReportAssets(cfg, outDir);
   var fontFace = await loadFontFace();
   var templatePath = new URL('../templates/ReportTemplate.html', import.meta.url);
   var template = await fs.readFile(templatePath, 'utf8');
@@ -40,7 +53,8 @@ export async function buildReportsApp(cfg, data, outDir) {
     .replace('/*__RAW_DATA__*/', JSON.stringify(data.rows))
     .replace('/*__MONTHLY_VIEWS_DATA__*/', JSON.stringify(data.monthly))
     .replace('/*__FOLLOWER_SNAPSHOTS_DATA__*/', JSON.stringify(data.followerSnapshots))
-    .split('__CLIENT_NAME__').join('ISOGREEN');
+    .replace('/*__CLIENT_LOGO_BADGE__*/', clientLogoBadge)
+    .split('__CLIENT_NAME__').join(cfg.CLIENT_NAME);
 
   var reportsDir = path.join(outDir, 'reports');
   await fs.mkdir(reportsDir, { recursive: true });
