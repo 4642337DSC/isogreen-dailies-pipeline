@@ -863,7 +863,7 @@
   .detail-stat-label { color: var(--muted); }
   .detail-stat-value-wrap { display: flex; align-items: baseline; gap: 7px; }
   .detail-stat-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
-  .detail-stat-delta { font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .detail-stat-delta { font-family: var(--font-mono); font-size: 9.5px; font-variant-numeric: tabular-nums; opacity: 0.7; }
   .detail-stat-delta.good { color: var(--good); }
   .detail-stat-delta.bad { color: var(--bad); }
   .detail-stat-delta.flat { color: var(--muted); }
@@ -2301,7 +2301,7 @@
           var deltaPct = Math.round(((v - avg) / avg) * 1000) / 10;
           var delta = document.createElement("span");
           delta.className = "detail-stat-delta " + (Math.abs(deltaPct) < 3 ? "flat" : (deltaPct > 0 ? "good" : "bad"));
-          delta.textContent = (deltaPct > 0 ? "+" : "") + deltaPct.toFixed(1) + "% vs avg";
+          delta.textContent = (deltaPct > 0 ? "+" : "") + deltaPct.toFixed(1) + "%";
           valueWrap.appendChild(delta);
         }
       }
@@ -2357,13 +2357,21 @@
     }).join("");
 
     var seriesMarkup = valid.map(function (s) {
-      var keys = Object.keys(s.points).map(Number).sort(function (a, b) { return a - b; });
-      var pts = keys.map(function (t) { return [xFor(t), yFor(s.points[String(t)])]; });
+      // Sort the ORIGINAL string keys numerically and index with them
+      // directly - going through Number(key) then String(number) to look
+      // the value back up (as this used to) silently drops any trailing
+      // zeros a key had ("0.0000" -> Number -> "0"), so most of a
+      // toFixed(4)-formatted series (every Facebook point, via
+      // toRatioSeries) failed its own lookup and plotted as NaN, which
+      // broke the path - only YouTube's un-padded keys happened to survive
+      // that round-trip, which is why only YouTube ever rendered.
+      var keys = Object.keys(s.points).sort(function (a, b) { return parseFloat(a) - parseFloat(b); });
+      var pts = keys.map(function (k) { return [xFor(parseFloat(k)), yFor(s.points[k])]; });
       var line = "M " + pts.map(function (p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" L ");
       var area = line + " L " + pts[pts.length - 1][0].toFixed(1) + " " + (padT + plotH).toFixed(1) +
         " L " + pts[0][0].toFixed(1) + " " + (padT + plotH).toFixed(1) + " Z";
       var end = pts[pts.length - 1];
-      var endLabel = Math.round(keys.length ? s.points[String(keys[keys.length - 1])] * 100 : 0) + "%";
+      var endLabel = Math.round(keys.length ? s.points[keys[keys.length - 1]] * 100 : 0) + "%";
       var gradId = "retgrad" + Math.random().toString(36).slice(2);
 
       return '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
