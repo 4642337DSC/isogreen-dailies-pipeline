@@ -48,19 +48,27 @@ function numOrNull(prop) { return prop && typeof prop.number === 'number' ? prop
 // row render should carry inline. Only the platforms that actually expose
 // each metric get a non-null value here - see youtube.js/facebook.js/
 // instagram.js/tiktok.js for what's available per platform and why.
+function retentionOrNull(prop) {
+  var raw = prop ? richTextToString(prop) : '';
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch (e) { return null; }
+}
+
 export function buildVideoDetail(page) {
   var props = page.properties;
-  var retention = null;
-  var retentionRaw = props['FB Retention Graph'] ? richTextToString(props['FB Retention Graph']) : '';
-  if (retentionRaw) {
-    try { retention = JSON.parse(retentionRaw); } catch (e) { retention = null; }
-  }
   return {
-    yt: { likes: numOrNull(props['YT Likes']), comments: numOrNull(props['YT Comments']) },
+    durationS: numOrNull(props['Duration (s)']),
+    yt: {
+      likes: numOrNull(props['YT Likes']), comments: numOrNull(props['YT Comments']),
+      hookRate: numOrNull(props['YT Hook Rate']), avgWatchPct: numOrNull(props['YT Avg Watch %']),
+      avgWatchTimeS: numOrNull(props['YT Avg Watch Time (s)']),
+      retentionVsSimilar: numOrNull(props['YT Retention vs Similar']),
+      retention: retentionOrNull(props['YT Retention Graph'])
+    },
     fb: {
       likes: numOrNull(props['FB Likes']), hookRate: numOrNull(props['FB Hook Rate']),
       avgWatchPct: numOrNull(props['FB Avg Watch %']), avgWatchTimeS: numOrNull(props['FB Avg Watch Time (s)']),
-      retention: retention
+      retention: retentionOrNull(props['FB Retention Graph'])
     },
     ig: {
       likes: numOrNull(props['IG Likes']), comments: numOrNull(props['IG Comments']),

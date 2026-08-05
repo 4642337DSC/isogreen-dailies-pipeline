@@ -1,5 +1,6 @@
 import { fetchJson } from './http.js';
 import { matchContent, buildPlatformReport, findById, daysApart } from './notion.js';
+import { fetchYouTubeVideoRetention, fetchYouTubeAvgWatchStats } from './youtubeAnalytics.js';
 
 // A cached "YouTube URL" is normally trusted unconditionally (that's the
 // whole point of caching - skip re-matching every run). But a row's "Data
@@ -93,6 +94,24 @@ export function extractYouTubeId(url) {
   return m ? m[1] : null;
 }
 
+// Hook rate is framed the same way as Facebook/Instagram: "% of the
+// audience still watching" at a fixed ~3-second mark, not a raw API field
+// (YouTube has none). Since YouTube's retention curve is bucketed by %
+// of video elapsed rather than seconds, this converts 3 seconds into that
+// video's own elapsed-ratio scale using its duration, then picks whichever
+// bucket lands closest to it.
+export function pickHookRate(retention, duration) {
+  if (!retention || !duration) return null;
+  var targetRatio = 3 / duration;
+  var closestKey = null;
+  var closestDiff = Infinity;
+  Object.keys(retention).forEach(function (k) {
+    var diff = Math.abs(parseFloat(k) - targetRatio);
+    if (diff < closestDiff) { closestDiff = diff; closestKey = k; }
+  });
+  return closestKey === null ? null : Math.round(retention[closestKey] * 1000) / 10;
+}
+
 export async function syncYouTube(cfg, rows) {
   var videos = await fetchAllYouTubeVideos(cfg);
   var plan = [];
@@ -115,16 +134,27 @@ export async function syncYouTube(cfg, rows) {
   });
 
   var stats = await fetchYouTubeViewCounts(cfg, idsNeeded);
+  var avgWatchStats = await fetchYouTubeAvgWatchStats(cfg, idsNeeded);
+
   var results = [];
-  plan.forEach(function (p) {
+  for (var p of plan) {
     var stat = stats[p.id];
-    if (stat === undefined) return;
+    if (stat === undefined) continue;
+    var avgWatch = avgWatchStats[p.id] || {};
+    // The one genuinely expensive call here (no batching available for
+    // this dimension) - same cost pattern already accepted for Instagram's
+    // per-media engagement fetch.
+    var retentionData = await fetchYouTubeVideoRetention(cfg, p.id);
     results.push({
       row: p.row, views: stat.views, duration: stat.duration, likes: stat.likes, comments: stat.comments,
+      avgWatchTimeS: avgWatch.avgWatchTimeS, avgWatchPct: avgWatch.avgWatchPct,
+      hookRate: retentionData ? pickHookRate(retentionData.retention, stat.duration) : null,
+      retention: retentionData ? retentionData.retention : null,
+      relativeRetentionPerformance: retentionData ? retentionData.relativeRetentionPerformance : null,
       isNewMatch: p.isNewMatch, method: p.method, score: p.score,
       url: p.isNewMatch ? ('https://www.youtube.com/watch?v=' + p.id) : null
     });
-  });
+  }
 
   return buildPlatformReport(rows, results);
 }

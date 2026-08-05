@@ -86,6 +86,78 @@ export async function fetchYouTubeDailyFollowers(cfg, start, end, currentCount) 
   return daily;
 }
 
+// Per-video audience retention curve, plus how it compares to similar-
+// length YouTube videos - both come from the same "elapsedVideoTimeRatio"
+// dimension, one call per video (this dimension can't batch across videos
+// the way "video" dimension can below) - same cost pattern as Instagram's
+// per-media engagement call. Buckets are % of video elapsed (0.01-1.00,
+// ~100 points), NOT seconds like Facebook's post_video_retention_graph -
+// see syncYouTube's hook-rate calc for how the two get reconciled onto a
+// shared axis using the video's own duration.
+//
+// audienceWatchRatio can legitimately exceed 1 at points viewers rewind to
+// replay (most often the very start) - a real YouTube Studio behavior, not
+// a bug - kept as-is rather than clamped so the popup can show it honestly.
+//
+// Empty rows are a real, common case for very recently published videos -
+// same ~2-3 day processing lag as fetchYouTubeDailyViews - not an error,
+// just nothing to report yet.
+export async function fetchYouTubeVideoRetention(cfg, videoId) {
+  var accessToken = await getYouTubeAccessToken(cfg);
+  var url = 'https://youtubeanalytics.googleapis.com/v2/reports?' + new URLSearchParams({
+    ids: 'channel==MINE',
+    metrics: 'audienceWatchRatio,relativeRetentionPerformance',
+    dimensions: 'elapsedVideoTimeRatio',
+    filters: 'video==' + videoId,
+    startDate: '2020-01-01',
+    endDate: isoDate(new Date())
+  }).toString();
+  var data = await fetchJson(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+  if (data.error) { console.log('YouTube retention fetch failed for ' + videoId + ': ' + JSON.stringify(data.error)); return null; }
+  if (!data.rows || !data.rows.length) return null;
+
+  // Rounded to 4 decimals - the raw API values carry ~16 significant
+  // digits of float noise, which at ~100 buckets would risk exceeding
+  // Notion's 2000-character rich_text limit once JSON-stringified (see
+  // notion.js's YT Retention Graph write) for no real precision benefit.
+  var retention = {};
+  var relPerf = [];
+  data.rows.forEach(function (row) {
+    retention[row[0]] = Math.round(row[1] * 10000) / 10000;
+    if (typeof row[2] === 'number') relPerf.push(row[2]);
+  });
+  var avgRelPerf = relPerf.length ? relPerf.reduce(function (a, b) { return a + b; }, 0) / relPerf.length : null;
+  return { retention: retention, relativeRetentionPerformance: avgRelPerf };
+}
+
+// Avg watch duration (seconds) + avg % of video watched, batched across
+// many videos per call via dimensions=video with a comma-separated filter -
+// much cheaper than the per-video retention call above. Batch size matches
+// fetchYouTubeViewCounts' Data API v3 batching (50) for consistency, though
+// this endpoint isn't confirmed to share that exact limit.
+export async function fetchYouTubeAvgWatchStats(cfg, videoIds) {
+  var unique = videoIds.filter(function (id, i) { return videoIds.indexOf(id) === i; });
+  var accessToken = await getYouTubeAccessToken(cfg);
+  var stats = {};
+  for (var i = 0; i < unique.length; i += 50) {
+    var batch = unique.slice(i, i + 50);
+    var url = 'https://youtubeanalytics.googleapis.com/v2/reports?' + new URLSearchParams({
+      ids: 'channel==MINE',
+      metrics: 'averageViewDuration,averageViewPercentage',
+      dimensions: 'video',
+      filters: 'video==' + batch.join(','),
+      startDate: '2020-01-01',
+      endDate: isoDate(new Date())
+    }).toString();
+    var data = await fetchJson(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+    if (data.error) { console.log('YouTube avg watch stats fetch failed: ' + JSON.stringify(data.error)); continue; }
+    (data.rows || []).forEach(function (row) {
+      stats[row[0]] = { avgWatchTimeS: row[1], avgWatchPct: row[2] };
+    });
+  }
+  return stats;
+}
+
 // Buckets fetchYouTubeDailyViews into calendar months, since oldestDate's
 // month through the current (partial) one - same shape as
 // syncInstagramMonthly/syncFacebookMonthly so it drops straight into

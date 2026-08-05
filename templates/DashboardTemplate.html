@@ -566,7 +566,8 @@
   .month-count { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
   .month-total { font-family: var(--font-mono); font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; flex: none; }
   .month-videos { padding: 4px 16px 14px 16px; display: flex; flex-direction: column; gap: 7px; }
-  .month-video-item { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+  .month-video-item { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; cursor: pointer; border-radius: 4px; padding: 2px 4px; margin: 0 -4px; }
+  .month-video-item:hover { background: var(--surface-2); }
   .month-video-name { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .month-video-total { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); flex: none; }
 
@@ -777,8 +778,9 @@
     flex: none;
   }
   .detail-modal-thumb {
-    width: 46px; height: 82px;
-    border-radius: 6px;
+    position: relative;
+    width: 72px; height: 128px;
+    border-radius: 8px;
     overflow: hidden;
     flex: none;
     background: var(--surface-2);
@@ -859,10 +861,25 @@
   .detail-stat-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
   .detail-empty-note { font-size: 12.5px; color: var(--muted); }
 
+  .detail-transcript {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    max-height: 140px;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    white-space: pre-wrap;
+  }
+
   .detail-retention-wrap { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 8px; }
   .detail-retention-note { font-size: 11.5px; color: var(--muted); margin: -4px 0 10px; line-height: 1.5; }
   .detail-retention-axis { font-family: var(--font-mono); font-size: 9.5px; fill: var(--muted); }
-  .detail-retention-endlabel { font-family: var(--font-mono); font-size: 11px; font-weight: 700; fill: var(--p-fb); }
+  .detail-retention-endlabel { font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
+  .detail-retention-legend { display: flex; gap: 14px; margin-top: 8px; padding-bottom: 4px; }
+  .detail-retention-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+  .detail-retention-legend .swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 
   .detail-modal-footer {
     display: flex;
@@ -1871,6 +1888,9 @@
         m.rows.slice().sort(function (a, b) { return total(b) - total(a); }).forEach(function (r) {
           var item = document.createElement("div");
           item.className = "month-video-item";
+          item.setAttribute("role", "button");
+          item.setAttribute("tabindex", "0");
+          item.setAttribute("aria-label", "View details for " + r.name.trim());
           var nm = document.createElement("span");
           nm.className = "month-video-name";
           nm.textContent = r.name.trim();
@@ -1878,6 +1898,10 @@
           tv.className = "month-video-total";
           tv.textContent = fmtFull(total(r));
           item.appendChild(nm); item.appendChild(tv);
+          item.addEventListener("click", function (row) { return function () { openVideoDetail(row); }; }(r));
+          item.addEventListener("keydown", function (row) {
+            return function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openVideoDetail(row); } };
+          }(r));
           videosWrap.appendChild(item);
         });
       }
@@ -2134,18 +2158,23 @@
   /* ===================== video detail modal ===================== */
   // Per-platform metric list for the detail popup - each platform only
   // shows what its own API actually exposes (see VIDEO_DETAILS comment
-  // above / src/dashboard.js's buildVideoDetail): YouTube has no hook-rate/
-  // watch-time data (would need per-video Analytics API queries, a real
-  // cost increase, not pulled here); Facebook has no comments/saves/shares
-  // (confirmed live - not fields Meta exposes on the Reels object);
-  // Instagram is the richest source; TikTok (via Zernio) has engagement
-  // counts only, no watch-time data at all.
+  // above / src/dashboard.js's buildVideoDetail): Facebook has no comments/
+  // saves/shares (confirmed live - not fields Meta exposes on the Reels
+  // object); Instagram is the richest source; TikTok (via Zernio) has
+  // engagement counts only, no watch-time data at all. YouTube's hook
+  // rate/watch-time/retention come from a separate per-video Analytics API
+  // call (youtubeAnalytics.js's fetchYouTubeVideoRetention) - real cost,
+  // same pattern already accepted for Instagram's engagement fetch.
   function fmtPct(n) { return n === null || n === undefined ? "—" : n.toFixed(1) + "%"; }
   function fmtSeconds(n) { return n === null || n === undefined ? "—" : n.toFixed(1) + "s"; }
   var DETAIL_METRICS = {
     yt: [
       { label: "Likes", value: function (d) { return d.yt.likes; }, fmt: fmtFull },
-      { label: "Comments", value: function (d) { return d.yt.comments; }, fmt: fmtFull }
+      { label: "Comments", value: function (d) { return d.yt.comments; }, fmt: fmtFull },
+      { label: "Hook rate (past 3s)", value: function (d) { return d.yt.hookRate; }, fmt: fmtPct },
+      { label: "Avg % watched", value: function (d) { return d.yt.avgWatchPct; }, fmt: fmtPct },
+      { label: "Avg watch time", value: function (d) { return d.yt.avgWatchTimeS; }, fmt: fmtSeconds },
+      { label: "Retention vs similar", value: function (d) { return d.yt.retentionVsSimilar; }, fmt: fmtPct }
     ],
     fb: [
       { label: "Likes", value: function (d) { return d.fb.likes; }, fmt: fmtFull },
@@ -2211,48 +2240,73 @@
     return panel;
   }
 
-  // Line+area retention chart, adapted for the dashboard's own token
-  // palette. Built as an SVG string rather than DOM calls (matches how
-  // platformIcon() already injects static, non-user SVG markup) - every
-  // value plotted here is a number from Meta's retention_graph, never
-  // free-text, so there's no injection surface despite the innerHTML use.
-  function buildRetentionChart(retention) {
-    var keys = Object.keys(retention).map(Number).sort(function (a, b) { return a - b; });
-    if (!keys.length) return null;
-    var W = 600, H = 160, padL = 30, padB = 18, padT = 10, padR = 8;
-    var plotW = W - padL - padR, plotH = H - padT - padB;
-    var maxT = keys[keys.length - 1];
-
-    var pts = keys.map(function (t) {
-      var x = padL + (t / maxT) * plotW;
-      var y = padT + (1 - retention[t]) * plotH;
-      return [x, y];
+  // Facebook's retention is keyed by second, YouTube's by ratio of video
+  // elapsed (0.01-1.00) - this puts Facebook on the same ratio axis so the
+  // two can overlay on one chart. Clamped at 1 defensively (duration is a
+  // separately-sourced value, so a slightly-off edge case shouldn't push a
+  // point off the plotted range).
+  function toRatioSeries(secondsKeyed, durationS) {
+    if (!secondsKeyed || !durationS) return null;
+    var out = {};
+    Object.keys(secondsKeyed).forEach(function (k) {
+      var ratio = Math.min(parseFloat(k) / durationS, 1);
+      out[ratio.toFixed(4)] = secondsKeyed[k];
     });
-    var line = "M " + pts.map(function (p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" L ");
-    var area = line + " L " + pts[pts.length - 1][0].toFixed(1) + " " + (padT + plotH).toFixed(1) +
-      " L " + pts[0][0].toFixed(1) + " " + (padT + plotH).toFixed(1) + " Z";
+    return out;
+  }
+
+  // Multi-series line+area retention chart (0-2 series: Facebook, YouTube),
+  // both already normalized onto a shared "% of video elapsed" x-axis by
+  // the caller. Built as an SVG string rather than DOM calls (matches how
+  // platformIcon() already injects static, non-user SVG markup) - every
+  // value plotted here is a number from Meta/YouTube's retention data,
+  // never free-text, so there's no injection surface despite the innerHTML
+  // use. Y-axis auto-scales past 100% - YouTube's audienceWatchRatio can
+  // legitimately exceed it at points viewers rewind to replay.
+  function buildRetentionChart(series) {
+    var valid = series.filter(function (s) { return s.points && Object.keys(s.points).length; });
+    if (!valid.length) return null;
+
+    var W = 600, H = 170, padL = 34, padB = 18, padT = 10, padR = 8;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+
+    var maxY = 1;
+    valid.forEach(function (s) {
+      Object.keys(s.points).forEach(function (k) { if (s.points[k] > maxY) maxY = s.points[k]; });
+    });
+
+    function xFor(ratio) { return padL + ratio * plotW; }
+    function yFor(value) { return padT + (1 - value / maxY) * plotH; }
 
     var grid = [0, 0.25, 0.5, 0.75, 1].map(function (frac) {
-      var y = padT + frac * plotH;
+      var y = padT + (1 - frac) * plotH;
       return '<line x1="' + padL + '" x2="' + (padL + plotW) + '" y1="' + y + '" y2="' + y + '" stroke="var(--grid)" stroke-width="1"/>' +
-        '<text class="detail-retention-axis" x="2" y="' + (y + 3) + '">' + Math.round((1 - frac) * 100) + '%</text>';
+        '<text class="detail-retention-axis" x="2" y="' + (y + 3) + '">' + Math.round(frac * maxY * 100) + '%</text>';
     }).join("");
 
-    var end = pts[pts.length - 1];
-    var endLabel = Math.round(retention[keys[keys.length - 1]] * 100) + "%";
-    var gradId = "retgrad" + Math.random().toString(36).slice(2);
+    var seriesMarkup = valid.map(function (s) {
+      var keys = Object.keys(s.points).map(Number).sort(function (a, b) { return a - b; });
+      var pts = keys.map(function (t) { return [xFor(t), yFor(s.points[String(t)])]; });
+      var line = "M " + pts.map(function (p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" L ");
+      var area = line + " L " + pts[pts.length - 1][0].toFixed(1) + " " + (padT + plotH).toFixed(1) +
+        " L " + pts[0][0].toFixed(1) + " " + (padT + plotH).toFixed(1) + " Z";
+      var end = pts[pts.length - 1];
+      var endLabel = Math.round(keys.length ? s.points[String(keys[keys.length - 1])] * 100 : 0) + "%";
+      var gradId = "retgrad" + Math.random().toString(36).slice(2);
 
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="160">' +
-      '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0%" stop-color="var(--p-fb)" stop-opacity="0.28"/>' +
-      '<stop offset="100%" stop-color="var(--p-fb)" stop-opacity="0.02"/></linearGradient></defs>' +
-      grid +
-      '<path d="' + area + '" fill="url(#' + gradId + ')" stroke="none"/>' +
-      '<path d="' + line + '" fill="none" stroke="var(--p-fb)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
-      '<circle cx="' + end[0].toFixed(1) + '" cy="' + end[1].toFixed(1) + '" r="3" fill="var(--p-fb)"/>' +
-      '<text class="detail-retention-endlabel" x="' + Math.max(padL, end[0] - 22) + '" y="' + (end[1] - 8) + '">' + endLabel + '</text>' +
-      '<text class="detail-retention-axis" x="' + padL + '" y="' + (H - 3) + '">0s</text>' +
-      '<text class="detail-retention-axis" x="' + (padL + plotW - 16) + '" y="' + (H - 3) + '">' + maxT + 's</text>' +
+      return '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="' + s.color + '" stop-opacity="0.24"/>' +
+        '<stop offset="100%" stop-color="' + s.color + '" stop-opacity="0.02"/></linearGradient></defs>' +
+        '<path d="' + area + '" fill="url(#' + gradId + ')" stroke="none"/>' +
+        '<path d="' + line + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<circle cx="' + end[0].toFixed(1) + '" cy="' + end[1].toFixed(1) + '" r="3" fill="' + s.color + '"/>' +
+        '<text class="detail-retention-endlabel" style="fill:' + s.color + '" x="' + Math.max(padL, end[0] - 22) + '" y="' + (end[1] - 8) + '">' + endLabel + '</text>';
+    }).join("");
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="170">' +
+      grid + seriesMarkup +
+      '<text class="detail-retention-axis" x="' + padL + '" y="' + (H - 3) + '">0%</text>' +
+      '<text class="detail-retention-axis" x="' + (padL + plotW - 30) + '" y="' + (H - 3) + '">100% watched</text>' +
       '</svg>';
   }
 
@@ -2264,7 +2318,9 @@
     detailModalLastFocus = document.activeElement;
 
     document.getElementById("detailModalTitle").textContent = r.name.trim();
-    document.getElementById("detailModalSub").textContent = r.cod + " · " + fmtDate(r.date);
+    var subParts = [r.cod, fmtDate(r.date)];
+    if (detail.durationS) subParts.push(fmtSeconds(detail.durationS));
+    document.getElementById("detailModalSub").textContent = subParts.join(" · ");
 
     var thumbWrap = document.getElementById("detailModalThumb");
     thumbWrap.textContent = "";
@@ -2272,6 +2328,19 @@
 
     var body = document.getElementById("detailModalBody");
     body.textContent = "";
+
+    if (r.transcript) {
+      var transcriptWrap = document.createElement("div");
+      var transcriptLabel = document.createElement("div");
+      transcriptLabel.className = "detail-section-label";
+      transcriptLabel.textContent = "Transcript";
+      transcriptWrap.appendChild(transcriptLabel);
+      var transcriptBody = document.createElement("div");
+      transcriptBody.className = "detail-transcript";
+      transcriptBody.textContent = r.transcript;
+      transcriptWrap.appendChild(transcriptBody);
+      body.appendChild(transcriptWrap);
+    }
 
     var viewsRow = document.createElement("div");
     viewsRow.className = "detail-views-row";
@@ -2302,41 +2371,57 @@
     engagementWrap.appendChild(grid);
     body.appendChild(engagementWrap);
 
+    var retentionSeries = [];
     if (detail.fb && detail.fb.retention) {
+      retentionSeries.push({ platform: "Facebook", color: "var(--p-fb)", points: toRatioSeries(detail.fb.retention, detail.durationS) });
+    }
+    if (detail.yt && detail.yt.retention) {
+      retentionSeries.push({ platform: "YouTube", color: "var(--p-yt)", points: detail.yt.retention });
+    }
+    var chartMarkup = buildRetentionChart(retentionSeries);
+    if (chartMarkup) {
       var retWrap = document.createElement("div");
       retWrap.className = "detail-retention-wrap";
       var retLabel = document.createElement("div");
       retLabel.className = "detail-section-label";
-      retLabel.textContent = "Facebook retention curve";
+      retLabel.textContent = "Retention curve";
       retWrap.appendChild(retLabel);
       var retNote = document.createElement("div");
       retNote.className = "detail-retention-note";
-      retNote.textContent = "Share of the audience still watching at each second, for this Reel's full lifetime.";
+      retNote.textContent = "Share of the audience still watching, by % of the video elapsed. YouTube's line can exceed 100% at points viewers rewind to replay.";
       retWrap.appendChild(retNote);
       var chartHost = document.createElement("div");
-      chartHost.innerHTML = buildRetentionChart(detail.fb.retention);
+      chartHost.innerHTML = chartMarkup;
       retWrap.appendChild(chartHost);
+
+      if (retentionSeries.length > 1) {
+        var legend = document.createElement("div");
+        legend.className = "detail-retention-legend";
+        retentionSeries.forEach(function (s) {
+          var item = document.createElement("span");
+          var sw = document.createElement("span");
+          sw.className = "swatch";
+          sw.style.background = s.color;
+          item.appendChild(sw);
+          item.appendChild(document.createTextNode(s.platform));
+          legend.appendChild(item);
+        });
+        retWrap.appendChild(legend);
+      }
       body.appendChild(retWrap);
     }
 
-    var footer = document.createElement("div");
-    footer.className = "detail-modal-footer";
     if (r.link) {
+      var footer = document.createElement("div");
+      footer.className = "detail-modal-footer";
       var openLink = document.createElement("a");
       openLink.href = r.link;
       openLink.target = "_blank";
       openLink.rel = "noopener noreferrer";
       openLink.textContent = "Open short ↗";
       footer.appendChild(openLink);
+      body.appendChild(footer);
     }
-    if (r.transcript) {
-      var tBtn = document.createElement("button");
-      tBtn.type = "button";
-      tBtn.textContent = "View transcript";
-      tBtn.addEventListener("click", function () { closeVideoDetail(); openTranscript(r.name.trim(), r.cod, r.transcript); });
-      footer.appendChild(tBtn);
-    }
-    body.appendChild(footer);
 
     detailModal.classList.add("show");
     document.getElementById("detailModalClose").focus();

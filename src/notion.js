@@ -356,6 +356,15 @@ export function buildUpdatePayloads(cfg, rows, yt, fb, ig, tt) {
     setNum(props, 'Duration (s)', r.duration);
     setNum(props, 'YT Likes', r.likes);
     setNum(props, 'YT Comments', r.comments);
+    setNum(props, 'YT Hook Rate', r.hookRate);
+    setNum(props, 'YT Avg Watch %', r.avgWatchPct);
+    setNum(props, 'YT Avg Watch Time (s)', r.avgWatchTimeS);
+    if (typeof r.relativeRetentionPerformance === 'number') {
+      props['YT Retention vs Similar'] = { number: Math.round(r.relativeRetentionPerformance * 1000) / 10 };
+    }
+    // Same reasoning as Facebook's retention graph - not a scalar, so it's
+    // compact JSON in a rich_text column rather than one column per point.
+    if (r.retention) props['YT Retention Graph'] = { rich_text: [{ text: { content: JSON.stringify(r.retention) } }] };
   });
   if (fb) {
     fb.results.forEach(function (r) {
