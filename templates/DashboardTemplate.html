@@ -745,6 +745,148 @@
     white-space: pre-wrap;
   }
 
+  /* ---------- video detail modal ---------- */
+  .detail-modal {
+    position: fixed; inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 50;
+  }
+  .detail-modal.show { display: flex; }
+  .detail-modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }
+  .detail-modal-panel {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: 12px;
+    max-width: 680px;
+    width: 100%;
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.32);
+  }
+  .detail-modal-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    flex: none;
+  }
+  .detail-modal-thumb {
+    width: 46px; height: 82px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex: none;
+    background: var(--surface-2);
+  }
+  .detail-modal-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .detail-modal-thumb > div { width: 100%; height: 100%; border-radius: 0; }
+  .detail-modal-titles { min-width: 0; flex: 1; }
+  .detail-modal-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+  .detail-modal-sub {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .detail-modal-close {
+    border: 1px solid var(--border-2);
+    background: var(--surface-2);
+    color: var(--ink-2);
+    border-radius: 6px;
+    width: 26px; height: 26px;
+    font-size: 12px;
+    cursor: pointer;
+    flex: none;
+  }
+  .detail-modal-close:hover { color: var(--ink); }
+  .detail-modal-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .detail-modal-body {
+    padding: 18px 20px 22px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .detail-views-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .detail-view-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 12px 5px 8px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .detail-section-label {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    font-family: var(--font-display);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .detail-platform-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .detail-platform-panel {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    border-top: 3px solid var(--border-2);
+  }
+  .detail-platform-head { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .detail-platform-name { font-family: var(--font-display); font-weight: 700; font-size: 12.5px; }
+  .detail-stat-row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 3px 0;
+    font-size: 12.5px;
+  }
+  .detail-stat-row + .detail-stat-row { border-top: 1px dashed var(--border); }
+  .detail-stat-label { color: var(--muted); }
+  .detail-stat-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .detail-empty-note { font-size: 12.5px; color: var(--muted); }
+
+  .detail-retention-wrap { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 8px; }
+  .detail-retention-note { font-size: 11.5px; color: var(--muted); margin: -4px 0 10px; line-height: 1.5; }
+  .detail-retention-axis { font-family: var(--font-mono); font-size: 9.5px; fill: var(--muted); }
+  .detail-retention-endlabel { font-family: var(--font-mono); font-size: 11px; font-weight: 700; fill: var(--p-fb); }
+
+  .detail-modal-footer {
+    display: flex;
+    gap: 10px;
+    padding-top: 2px;
+  }
+  .detail-modal-footer a, .detail-modal-footer button {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border-2);
+    background: var(--surface-2);
+    color: var(--ink);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .detail-modal-footer a:hover, .detail-modal-footer button:hover { background: var(--accent-wash); border-color: var(--accent); }
+
+  tbody tr { cursor: pointer; }
+  tbody td.link-cell, tbody td.transcript-cell { cursor: default; }
+  .perf-card { cursor: pointer; }
+
   footer {
     margin-top: 32px;
     padding-top: 18px;
@@ -889,6 +1031,21 @@
   </div>
 </div>
 
+<div class="detail-modal" id="detailModal">
+  <div class="detail-modal-overlay" id="detailModalOverlay"></div>
+  <div class="detail-modal-panel" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
+    <div class="detail-modal-head">
+      <div class="detail-modal-thumb" id="detailModalThumb"></div>
+      <div class="detail-modal-titles">
+        <div class="detail-modal-title" id="detailModalTitle"></div>
+        <div class="detail-modal-sub" id="detailModalSub"></div>
+      </div>
+      <button class="detail-modal-close" id="detailModalClose" type="button" aria-label="Close video detail">✕</button>
+    </div>
+    <div class="detail-modal-body" id="detailModalBody"></div>
+  </div>
+</div>
+
 <script>
 (function () {
   "use strict";
@@ -903,6 +1060,12 @@
   var DATA = RAW.map(function (r) {
     return { name: r[0], cod: r[1], yt: r[2], fb: r[3], ig: r[4], tt: r[5], date: r[6], link: r[7], transcript: r[8], thumb: r[9] };
   });
+
+  // Per-video engagement/hook-rate/watch-time detail, keyed by "Cod" - powers
+  // the click-through detail popup (see openVideoDetail below). Only the
+  // platforms/metrics each source actually exposes are non-null - see
+  // buildVideoDetail in src/dashboard.js for what's available per platform.
+  var VIDEO_DETAILS = /*__VIDEO_DETAILS_DATA__*/;
 
   // Account-level follower counts, from the "📊 Channel Stats" Notion database
   // (populated daily by the Apps Script sync, separate from per-video RAW data).
@@ -1572,7 +1735,7 @@
         tBtn.textContent = "✓";
         tBtn.setAttribute("aria-label", "View transcript for " + r.name.trim());
         tBtn.addEventListener("click", function (name, cod, text) {
-          return function () { openTranscript(name, cod, text); };
+          return function (e) { e.stopPropagation(); openTranscript(name, cod, text); };
         }(r.name.trim(), r.cod, r.transcript));
         card.appendChild(tBtn);
       }
@@ -1589,6 +1752,14 @@
       totalEl.title = fmtFull(item.t);
       bottom.appendChild(nameEl); bottom.appendChild(totalEl);
       card.appendChild(bottom);
+
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      card.setAttribute("aria-label", "View details for " + r.name.trim());
+      card.addEventListener("click", function (row) { return function () { openVideoDetail(row); }; }(r));
+      card.addEventListener("keydown", function (row) {
+        return function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openVideoDetail(row); } };
+      }(r));
 
       grid.appendChild(card);
     });
@@ -1873,6 +2044,7 @@
         a.textContent = "↗";
         a.title = "Open short";
         a.setAttribute("aria-label", "Open " + r.name.trim());
+        a.addEventListener("click", function (e) { e.stopPropagation(); });
         tdLink.appendChild(a);
       } else {
         tdLink.className += " muted-cell";
@@ -1888,7 +2060,7 @@
         tBtn.textContent = "✓";
         tBtn.setAttribute("aria-label", "View transcript for " + r.name.trim());
         tBtn.addEventListener("click", function (name, cod, text) {
-          return function () { openTranscript(name, cod, text); };
+          return function (e) { e.stopPropagation(); openTranscript(name, cod, text); };
         }(r.name.trim(), r.cod, r.transcript));
         tdTranscript.appendChild(tBtn);
       } else {
@@ -1902,6 +2074,13 @@
       tr.appendChild(tdThumb); tr.appendChild(tdName); tr.appendChild(tdDate); tr.appendChild(tdYt);
       tr.appendChild(tdTt); tr.appendChild(tdIg); tr.appendChild(tdFb); tr.appendChild(tdTotal);
       tr.appendChild(tdLink); tr.appendChild(tdTranscript);
+      tr.setAttribute("tabindex", "0");
+      tr.setAttribute("role", "button");
+      tr.setAttribute("aria-label", "View details for " + r.name.trim());
+      tr.addEventListener("click", function (row) { return function () { openVideoDetail(row); }; }(r));
+      tr.addEventListener("keydown", function (row) {
+        return function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openVideoDetail(row); } };
+      }(r));
       tbody.appendChild(tr);
     });
   }
@@ -1950,6 +2129,226 @@
   document.getElementById("transcriptModalOverlay").addEventListener("click", closeTranscript);
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && transcriptModal.classList.contains("show")) closeTranscript();
+  });
+
+  /* ===================== video detail modal ===================== */
+  // Per-platform metric list for the detail popup - each platform only
+  // shows what its own API actually exposes (see VIDEO_DETAILS comment
+  // above / src/dashboard.js's buildVideoDetail): YouTube has no hook-rate/
+  // watch-time data (would need per-video Analytics API queries, a real
+  // cost increase, not pulled here); Facebook has no comments/saves/shares
+  // (confirmed live - not fields Meta exposes on the Reels object);
+  // Instagram is the richest source; TikTok (via Zernio) has engagement
+  // counts only, no watch-time data at all.
+  function fmtPct(n) { return n === null || n === undefined ? "—" : n.toFixed(1) + "%"; }
+  function fmtSeconds(n) { return n === null || n === undefined ? "—" : n.toFixed(1) + "s"; }
+  var DETAIL_METRICS = {
+    yt: [
+      { label: "Likes", value: function (d) { return d.yt.likes; }, fmt: fmtFull },
+      { label: "Comments", value: function (d) { return d.yt.comments; }, fmt: fmtFull }
+    ],
+    fb: [
+      { label: "Likes", value: function (d) { return d.fb.likes; }, fmt: fmtFull },
+      { label: "Hook rate (past 6s)", value: function (d) { return d.fb.hookRate; }, fmt: fmtPct },
+      { label: "Avg % watched", value: function (d) { return d.fb.avgWatchPct; }, fmt: fmtPct },
+      { label: "Avg watch time", value: function (d) { return d.fb.avgWatchTimeS; }, fmt: fmtSeconds }
+    ],
+    ig: [
+      { label: "Likes", value: function (d) { return d.ig.likes; }, fmt: fmtFull },
+      { label: "Comments", value: function (d) { return d.ig.comments; }, fmt: fmtFull },
+      { label: "Saves", value: function (d) { return d.ig.saves; }, fmt: fmtFull },
+      { label: "Shares", value: function (d) { return d.ig.shares; }, fmt: fmtFull },
+      { label: "Hook rate (past 3s)", value: function (d) { return d.ig.hookRate; }, fmt: fmtPct },
+      { label: "Avg % watched", value: function (d) { return d.ig.avgWatchPct; }, fmt: fmtPct },
+      { label: "Avg watch time", value: function (d) { return d.ig.avgWatchTimeS; }, fmt: fmtSeconds }
+    ],
+    tt: [
+      { label: "Likes", value: function (d) { return d.tt.likes; }, fmt: fmtFull },
+      { label: "Comments", value: function (d) { return d.tt.comments; }, fmt: fmtFull },
+      { label: "Shares", value: function (d) { return d.tt.shares; }, fmt: fmtFull },
+      { label: "Saves", value: function (d) { return d.tt.saves; }, fmt: fmtFull }
+    ]
+  };
+
+  function buildPlatformPanel(p, r, detail) {
+    var specs = DETAIL_METRICS[p.key];
+    var anyValue = specs.some(function (s) { return s.value(detail) !== null && s.value(detail) !== undefined; });
+    if (r[p.key] === null && !anyValue) return null; // never posted to this platform at all
+
+    var panel = document.createElement("div");
+    panel.className = "detail-platform-panel";
+    panel.style.borderTopColor = p.color;
+
+    var head = document.createElement("div");
+    head.className = "detail-platform-head";
+    head.appendChild(platformIcon(p.key, "sm"));
+    var name = document.createElement("span");
+    name.className = "detail-platform-name";
+    name.textContent = p.label;
+    head.appendChild(name);
+    panel.appendChild(head);
+
+    if (!anyValue) {
+      var note = document.createElement("div");
+      note.className = "detail-empty-note";
+      note.textContent = "No engagement data captured yet.";
+      panel.appendChild(note);
+      return panel;
+    }
+
+    specs.forEach(function (spec) {
+      var row = document.createElement("div");
+      row.className = "detail-stat-row";
+      var label = document.createElement("span");
+      label.className = "detail-stat-label";
+      label.textContent = spec.label;
+      var value = document.createElement("span");
+      value.className = "detail-stat-value";
+      value.textContent = spec.fmt(spec.value(detail));
+      row.appendChild(label); row.appendChild(value);
+      panel.appendChild(row);
+    });
+    return panel;
+  }
+
+  // Line+area retention chart, adapted for the dashboard's own token
+  // palette. Built as an SVG string rather than DOM calls (matches how
+  // platformIcon() already injects static, non-user SVG markup) - every
+  // value plotted here is a number from Meta's retention_graph, never
+  // free-text, so there's no injection surface despite the innerHTML use.
+  function buildRetentionChart(retention) {
+    var keys = Object.keys(retention).map(Number).sort(function (a, b) { return a - b; });
+    if (!keys.length) return null;
+    var W = 600, H = 160, padL = 30, padB = 18, padT = 10, padR = 8;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var maxT = keys[keys.length - 1];
+
+    var pts = keys.map(function (t) {
+      var x = padL + (t / maxT) * plotW;
+      var y = padT + (1 - retention[t]) * plotH;
+      return [x, y];
+    });
+    var line = "M " + pts.map(function (p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" L ");
+    var area = line + " L " + pts[pts.length - 1][0].toFixed(1) + " " + (padT + plotH).toFixed(1) +
+      " L " + pts[0][0].toFixed(1) + " " + (padT + plotH).toFixed(1) + " Z";
+
+    var grid = [0, 0.25, 0.5, 0.75, 1].map(function (frac) {
+      var y = padT + frac * plotH;
+      return '<line x1="' + padL + '" x2="' + (padL + plotW) + '" y1="' + y + '" y2="' + y + '" stroke="var(--grid)" stroke-width="1"/>' +
+        '<text class="detail-retention-axis" x="2" y="' + (y + 3) + '">' + Math.round((1 - frac) * 100) + '%</text>';
+    }).join("");
+
+    var end = pts[pts.length - 1];
+    var endLabel = Math.round(retention[keys[keys.length - 1]] * 100) + "%";
+    var gradId = "retgrad" + Math.random().toString(36).slice(2);
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="160">' +
+      '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="var(--p-fb)" stop-opacity="0.28"/>' +
+      '<stop offset="100%" stop-color="var(--p-fb)" stop-opacity="0.02"/></linearGradient></defs>' +
+      grid +
+      '<path d="' + area + '" fill="url(#' + gradId + ')" stroke="none"/>' +
+      '<path d="' + line + '" fill="none" stroke="var(--p-fb)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + end[0].toFixed(1) + '" cy="' + end[1].toFixed(1) + '" r="3" fill="var(--p-fb)"/>' +
+      '<text class="detail-retention-endlabel" x="' + Math.max(padL, end[0] - 22) + '" y="' + (end[1] - 8) + '">' + endLabel + '</text>' +
+      '<text class="detail-retention-axis" x="' + padL + '" y="' + (H - 3) + '">0s</text>' +
+      '<text class="detail-retention-axis" x="' + (padL + plotW - 16) + '" y="' + (H - 3) + '">' + maxT + 's</text>' +
+      '</svg>';
+  }
+
+  var detailModal = document.getElementById("detailModal");
+  var detailModalLastFocus = null;
+
+  function openVideoDetail(r) {
+    var detail = VIDEO_DETAILS[r.cod] || { yt: {}, fb: {}, ig: {}, tt: {} };
+    detailModalLastFocus = document.activeElement;
+
+    document.getElementById("detailModalTitle").textContent = r.name.trim();
+    document.getElementById("detailModalSub").textContent = r.cod + " · " + fmtDate(r.date);
+
+    var thumbWrap = document.getElementById("detailModalThumb");
+    thumbWrap.textContent = "";
+    thumbWrap.appendChild(placeholderTile(r, "sm"));
+
+    var body = document.getElementById("detailModalBody");
+    body.textContent = "";
+
+    var viewsRow = document.createElement("div");
+    viewsRow.className = "detail-views-row";
+    PLATFORMS.forEach(function (p) {
+      var v = r[p.key];
+      if (v === null || v === undefined) return;
+      var chip = document.createElement("span");
+      chip.className = "detail-view-chip";
+      chip.appendChild(platformIcon(p.key, "sm"));
+      var val = document.createElement("span");
+      val.textContent = fmtFull(v) + " views";
+      chip.appendChild(val);
+      viewsRow.appendChild(chip);
+    });
+    body.appendChild(viewsRow);
+
+    var engagementWrap = document.createElement("div");
+    var engagementLabel = document.createElement("div");
+    engagementLabel.className = "detail-section-label";
+    engagementLabel.textContent = "Engagement";
+    engagementWrap.appendChild(engagementLabel);
+    var grid = document.createElement("div");
+    grid.className = "detail-platform-grid";
+    PLATFORMS.forEach(function (p) {
+      var panel = buildPlatformPanel(p, r, detail);
+      if (panel) grid.appendChild(panel);
+    });
+    engagementWrap.appendChild(grid);
+    body.appendChild(engagementWrap);
+
+    if (detail.fb && detail.fb.retention) {
+      var retWrap = document.createElement("div");
+      retWrap.className = "detail-retention-wrap";
+      var retLabel = document.createElement("div");
+      retLabel.className = "detail-section-label";
+      retLabel.textContent = "Facebook retention curve";
+      retWrap.appendChild(retLabel);
+      var retNote = document.createElement("div");
+      retNote.className = "detail-retention-note";
+      retNote.textContent = "Share of the audience still watching at each second, for this Reel's full lifetime.";
+      retWrap.appendChild(retNote);
+      var chartHost = document.createElement("div");
+      chartHost.innerHTML = buildRetentionChart(detail.fb.retention);
+      retWrap.appendChild(chartHost);
+      body.appendChild(retWrap);
+    }
+
+    var footer = document.createElement("div");
+    footer.className = "detail-modal-footer";
+    if (r.link) {
+      var openLink = document.createElement("a");
+      openLink.href = r.link;
+      openLink.target = "_blank";
+      openLink.rel = "noopener noreferrer";
+      openLink.textContent = "Open short ↗";
+      footer.appendChild(openLink);
+    }
+    if (r.transcript) {
+      var tBtn = document.createElement("button");
+      tBtn.type = "button";
+      tBtn.textContent = "View transcript";
+      tBtn.addEventListener("click", function () { closeVideoDetail(); openTranscript(r.name.trim(), r.cod, r.transcript); });
+      footer.appendChild(tBtn);
+    }
+    body.appendChild(footer);
+
+    detailModal.classList.add("show");
+    document.getElementById("detailModalClose").focus();
+  }
+  function closeVideoDetail() {
+    detailModal.classList.remove("show");
+    if (detailModalLastFocus && detailModalLastFocus.focus) detailModalLastFocus.focus();
+  }
+  document.getElementById("detailModalClose").addEventListener("click", closeVideoDetail);
+  document.getElementById("detailModalOverlay").addEventListener("click", closeVideoDetail);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && detailModal.classList.contains("show")) closeVideoDetail();
   });
 
   /* ===================== wire up controls ===================== */

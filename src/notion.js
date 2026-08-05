@@ -333,6 +333,10 @@ export function buildPlatformReport(rows, results) {
   return { results: results, unmatched: unmatched };
 }
 
+function setNum(props, key, value) {
+  if (typeof value === 'number') props[key] = { number: value };
+}
+
 export function buildUpdatePayloads(cfg, rows, yt, fb, ig, tt) {
   var byPage = {};
   function entryFor(row) {
@@ -349,13 +353,24 @@ export function buildUpdatePayloads(cfg, rows, yt, fb, ig, tt) {
     // extra field on a call the sync already makes (see
     // fetchYouTubeViewCounts), unlike Facebook (a separate field-expansion
     // request) or Instagram/TikTok (no duration field available at all).
-    if (typeof r.duration === 'number') props['Duration (s)'] = { number: r.duration };
+    setNum(props, 'Duration (s)', r.duration);
+    setNum(props, 'YT Likes', r.likes);
+    setNum(props, 'YT Comments', r.comments);
   });
   if (fb) {
     fb.results.forEach(function (r) {
       var props = entryFor(r.row);
       props[cfg.FB_FIELD_NAME] = { number: r.views };
       if (r.url) props['Facebook URL'] = { url: r.url };
+      setNum(props, 'FB Likes', r.likes);
+      setNum(props, 'FB Hook Rate', r.hookRate);
+      setNum(props, 'FB Avg Watch %', r.avgWatchPct);
+      setNum(props, 'FB Avg Watch Time (s)', r.avgWatchTimeS);
+      // Not a scalar - the only metric here that isn't - so it's stored as
+      // compact JSON rather than getting its own column-per-second. Small
+      // enough (a Reel's length in points) to fit one rich_text block well
+      // under Notion's 2000-character limit.
+      if (r.retention) props['FB Retention Graph'] = { rich_text: [{ text: { content: JSON.stringify(r.retention) } }] };
     });
   }
   if (ig) {
@@ -363,12 +378,23 @@ export function buildUpdatePayloads(cfg, rows, yt, fb, ig, tt) {
       var props = entryFor(r.row);
       props[cfg.IG_FIELD_NAME] = { number: r.views };
       if (r.url) props['Instagram URL'] = { url: r.url };
+      setNum(props, 'IG Likes', r.likes);
+      setNum(props, 'IG Comments', r.comments);
+      setNum(props, 'IG Saves', r.saves);
+      setNum(props, 'IG Shares', r.shares);
+      setNum(props, 'IG Hook Rate', r.hookRate);
+      setNum(props, 'IG Avg Watch %', r.avgWatchPct);
+      setNum(props, 'IG Avg Watch Time (s)', r.avgWatchTimeS);
     });
   }
   if (tt) {
     tt.results.forEach(function (r) {
       var props = entryFor(r.row);
       props[cfg.TT_FIELD_NAME] = { number: r.views };
+      setNum(props, 'TT Likes', r.likes);
+      setNum(props, 'TT Comments', r.comments);
+      setNum(props, 'TT Shares', r.shares);
+      setNum(props, 'TT Saves', r.saves);
     });
   }
 

@@ -40,11 +40,47 @@ export function buildDashboardRow(cfg, page, thumbMap) {
   ];
 }
 
+function numOrNull(prop) { return prop && typeof prop.number === 'number' ? prop.number : null; }
+
+// Per-video engagement/hook-rate/watch-time detail, keyed by "Cod" - kept
+// separate from the RAW row array (rather than growing it) since this is
+// "click to expand" data the video-detail popup needs, not something every
+// row render should carry inline. Only the platforms that actually expose
+// each metric get a non-null value here - see youtube.js/facebook.js/
+// instagram.js/tiktok.js for what's available per platform and why.
+export function buildVideoDetail(page) {
+  var props = page.properties;
+  var retention = null;
+  var retentionRaw = props['FB Retention Graph'] ? richTextToString(props['FB Retention Graph']) : '';
+  if (retentionRaw) {
+    try { retention = JSON.parse(retentionRaw); } catch (e) { retention = null; }
+  }
+  return {
+    yt: { likes: numOrNull(props['YT Likes']), comments: numOrNull(props['YT Comments']) },
+    fb: {
+      likes: numOrNull(props['FB Likes']), hookRate: numOrNull(props['FB Hook Rate']),
+      avgWatchPct: numOrNull(props['FB Avg Watch %']), avgWatchTimeS: numOrNull(props['FB Avg Watch Time (s)']),
+      retention: retention
+    },
+    ig: {
+      likes: numOrNull(props['IG Likes']), comments: numOrNull(props['IG Comments']),
+      saves: numOrNull(props['IG Saves']), shares: numOrNull(props['IG Shares']),
+      hookRate: numOrNull(props['IG Hook Rate']), avgWatchPct: numOrNull(props['IG Avg Watch %']),
+      avgWatchTimeS: numOrNull(props['IG Avg Watch Time (s)'])
+    },
+    tt: {
+      likes: numOrNull(props['TT Likes']), comments: numOrNull(props['TT Comments']),
+      shares: numOrNull(props['TT Shares']), saves: numOrNull(props['TT Saves'])
+    }
+  };
+}
+
 // Reads the fields the dashboard needs (view counts, per-platform URLs,
 // transcript) that the sync path's parseNotionRow doesn't - kept separate
 // so the sync path isn't carrying fields it never uses.
 export async function fetchDashboardRows(cfg, thumbMap) {
   var out = [];
+  var details = {};
   var cursor = null;
   do {
     var payload = {
@@ -56,12 +92,15 @@ export async function fetchDashboardRows(cfg, thumbMap) {
     if (data.object === 'error') throw new Error('Notion query failed: ' + data.message);
     (data.results || []).forEach(function (page) {
       var row = buildDashboardRow(cfg, page, thumbMap);
-      if (row) out.push(row);
+      if (row) {
+        out.push(row);
+        if (row[1]) details[row[1]] = buildVideoDetail(page);
+      }
     });
     cursor = data.has_more ? data.next_cursor : null;
   } while (cursor);
   out.sort(function (a, b) { return a[6] < b[6] ? -1 : a[6] > b[6] ? 1 : 0; }); // ascending by post date
-  return out;
+  return { rows: out, details: details };
 }
 
 export async function fetchDashboardAudience(cfg) {
@@ -152,7 +191,9 @@ export async function fetchDashboardFollowerSnapshots(cfg) {
 // wpautop/kses, so the embedded <script> block and its JSON payload survive
 // intact.
 export async function buildDashboard(cfg, thumbMap, outDir) {
-  var rows = await fetchDashboardRows(cfg, thumbMap);
+  var rowsResult = await fetchDashboardRows(cfg, thumbMap);
+  var rows = rowsResult.rows;
+  var videoDetails = rowsResult.details;
   var audience = await fetchDashboardAudience(cfg);
   var monthly = await fetchDashboardMonthlyViews(cfg);
   var daily = await fetchDashboardDailyViews(cfg);
@@ -162,6 +203,7 @@ export async function buildDashboard(cfg, thumbMap, outDir) {
   var html = await fs.readFile(templatePath, 'utf8');
   html = html
     .replace('/*__RAW_DATA__*/', JSON.stringify(rows))
+    .replace('/*__VIDEO_DETAILS_DATA__*/', JSON.stringify(videoDetails))
     .replace('/*__AUDIENCE_DATA__*/', JSON.stringify(audience))
     .replace('/*__MONTHLY_VIEWS_DATA__*/', JSON.stringify(monthly))
     .replace('/*__DAILY_VIEWS_DATA__*/', JSON.stringify(daily))
@@ -175,7 +217,7 @@ export async function buildDashboard(cfg, thumbMap, outDir) {
 
   // Returned so callers (src/reports.js, via sync.js) can reuse this same
   // fetched data instead of re-querying Notion for the same rows/stats.
-  return { rows: rows, audience: audience, monthly: monthly, daily: daily, followerSnapshots: followerSnapshots };
+  return { rows: rows, videoDetails: videoDetails, audience: audience, monthly: monthly, daily: daily, followerSnapshots: followerSnapshots };
 }
 
 export function renderClientLinks(slugs) {

@@ -10,11 +10,22 @@ export function extractTikTokId(url) {
   return m ? m[1] : null;
 }
 
-export async function fetchTikTokViewCount(cfg, videoId) {
+// likes/comments/shares/saves all arrive in this same response Zernio
+// already sends for views - no extra API call for any of them. Duration
+// and watch-time were checked too (see analytics.videoDurationSeconds) but
+// come back null for externally-synced posts - not available in practice.
+export async function fetchTikTokAnalytics(cfg, videoId) {
   var url = 'https://zernio.com/api/v1/analytics?postId=' + videoId + '&accountId=' + cfg.ZERNIO_TIKTOK_ACCOUNT_ID;
   var data = await fetchJson(url, { headers: { Authorization: 'Bearer ' + cfg.ZERNIO_API_KEY } });
   if (!data.analytics || typeof data.analytics.views !== 'number') return null;
-  return data.analytics.views;
+  var a = data.analytics;
+  return {
+    views: a.views,
+    likes: typeof a.likes === 'number' ? a.likes : null,
+    comments: typeof a.comments === 'number' ? a.comments : null,
+    shares: typeof a.shares === 'number' ? a.shares : null,
+    saves: typeof a.saves === 'number' ? a.saves : null
+  };
 }
 
 export async function syncTikTok(cfg, rows) {
@@ -23,9 +34,12 @@ export async function syncTikTok(cfg, rows) {
     if (!row.tiktokUrl) continue;
     var videoId = extractTikTokId(row.tiktokUrl);
     if (!videoId) continue;
-    var views = await fetchTikTokViewCount(cfg, videoId);
-    if (views === null) continue;
-    results.push({ row: row, views: views, isNewMatch: false, method: 'manual-url', score: null, url: null });
+    var stats = await fetchTikTokAnalytics(cfg, videoId);
+    if (!stats) continue;
+    results.push({
+      row: row, views: stats.views, isNewMatch: false, method: 'manual-url', score: null, url: null,
+      likes: stats.likes, comments: stats.comments, shares: stats.shares, saves: stats.saves
+    });
   }
   return buildPlatformReport(rows, results);
 }

@@ -79,7 +79,9 @@ export async function fetchYouTubeViewCounts(cfg, videoIds) {
     (data.items || []).forEach(function (item) {
       stats[item.id] = {
         views: parseInt(item.statistics.viewCount, 10),
-        duration: parseIso8601Duration(item.contentDetails && item.contentDetails.duration)
+        duration: parseIso8601Duration(item.contentDetails && item.contentDetails.duration),
+        likes: item.statistics.likeCount !== undefined ? parseInt(item.statistics.likeCount, 10) : null,
+        comments: item.statistics.commentCount !== undefined ? parseInt(item.statistics.commentCount, 10) : null
       };
     });
   }
@@ -118,7 +120,8 @@ export async function syncYouTube(cfg, rows) {
     var stat = stats[p.id];
     if (stat === undefined) return;
     results.push({
-      row: p.row, views: stat.views, duration: stat.duration, isNewMatch: p.isNewMatch, method: p.method, score: p.score,
+      row: p.row, views: stat.views, duration: stat.duration, likes: stat.likes, comments: stat.comments,
+      isNewMatch: p.isNewMatch, method: p.method, score: p.score,
       url: p.isNewMatch ? ('https://www.youtube.com/watch?v=' + p.id) : null
     });
   });

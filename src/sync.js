@@ -41,8 +41,13 @@ export async function syncAllViews() {
   var rows = await fetchNotionRows(cfg);
 
   var yt = await syncYouTube(cfg, rows);
+  // Instagram has no duration field of its own (confirmed - Meta doesn't
+  // expose one on the Media node) - reused from YouTube's here so its
+  // avg-watch-% can still be computed, same video either way.
+  var durationByPageId = {};
+  yt.results.forEach(function (r) { if (typeof r.duration === 'number') durationByPageId[r.row.pageId] = r.duration; });
   var fb = fbEnabled ? await syncFacebook(cfg, rows) : null;
-  var ig = fbEnabled ? await syncInstagram(cfg, rows) : null;
+  var ig = fbEnabled ? await syncInstagram(cfg, rows, durationByPageId) : null;
   var tt = tiktokEnabled ? await syncTikTok(cfg, rows) : null;
 
   await writeUpdates(cfg, rows, yt, fb, ig, tt);

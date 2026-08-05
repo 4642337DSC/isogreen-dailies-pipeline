@@ -55,7 +55,34 @@ export async function fetchInstagramViewCounts(cfg, mediaIds) {
   return views;
 }
 
-export async function syncInstagram(cfg, rows) {
+// Engagement + hook-rate + watch-time metrics, one extra call per matched
+// media (kept separate from fetchInstagramViewCounts rather than combined
+// into it, since "views"/"plays" needs version-dependent fallback logic
+// that could make a combined multi-metric request fail atomically for
+// older media - these metrics are all stable across API versions, so a
+// second simpler call is safer than risking the existing view-count path).
+export async function fetchInstagramMediaMetrics(cfg, mediaIds) {
+  var unique = mediaIds.filter(function (id, i) { return mediaIds.indexOf(id) === i; });
+  var metrics = {};
+  for (var id of unique) {
+    var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + id +
+      '/insights?metric=likes,comments,saved,shares,reels_skip_rate,ig_reels_avg_watch_time&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
+    var data = await fetchJson(url);
+    if (data.error) { console.log('Instagram media metrics fetch failed for ' + id + ': ' + JSON.stringify(data.error)); continue; }
+    var m = {};
+    (data.data || []).forEach(function (row) {
+      m[row.name] = (row.values && row.values.length) ? row.values[0].value : null;
+    });
+    metrics[id] = m;
+  }
+  return metrics;
+}
+
+// durationByPageId is optional - { pageId: seconds }, sourced from
+// syncYouTube's results (see sync.js) since Instagram exposes no duration
+// field of its own. Without it, avgWatchPct just comes back null while
+// avgWatchTimeS (a real, direct Instagram metric) still populates.
+export async function syncInstagram(cfg, rows, durationByPageId) {
   var media = await fetchAllInstagramMedia(cfg);
   var matched = [];
   rows.forEach(function (row) {
@@ -65,13 +92,28 @@ export async function syncInstagram(cfg, rows) {
 
   var ids = matched.map(function (p) { return p.id; });
   var stats = await fetchInstagramViewCounts(cfg, ids);
+  var extra = await fetchInstagramMediaMetrics(cfg, ids);
 
   var results = [];
   matched.forEach(function (p) {
     var views = stats[p.id];
     if (views === undefined) return;
     var candidate = findById(media, p.id);
-    results.push({ row: p.row, views: views, isNewMatch: true, method: p.method, score: p.score, url: candidate ? candidate.permalink : null });
+    var m = extra[p.id] || {};
+    var duration = durationByPageId ? durationByPageId[p.row.pageId] : undefined;
+    // Hook rate framed as "% who kept watching" (matches Facebook's framing
+    // and the user-facing label), so it's the inverse of the raw skip rate.
+    var hookRate = typeof m.reels_skip_rate === 'number' ? Math.round((100 - m.reels_skip_rate) * 10) / 10 : null;
+    var avgWatchTimeS = typeof m.ig_reels_avg_watch_time === 'number' ? Math.round(m.ig_reels_avg_watch_time) / 1000 : null;
+    var avgWatchPct = (avgWatchTimeS !== null && duration) ? Math.round((avgWatchTimeS / duration) * 1000) / 10 : null;
+    results.push({
+      row: p.row, views: views, isNewMatch: true, method: p.method, score: p.score, url: candidate ? candidate.permalink : null,
+      likes: typeof m.likes === 'number' ? m.likes : null,
+      comments: typeof m.comments === 'number' ? m.comments : null,
+      saves: typeof m.saved === 'number' ? m.saved : null,
+      shares: typeof m.shares === 'number' ? m.shares : null,
+      hookRate: hookRate, avgWatchTimeS: avgWatchTimeS, avgWatchPct: avgWatchPct
+    });
   });
   return buildPlatformReport(rows, results);
 }

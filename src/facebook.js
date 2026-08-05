@@ -6,24 +6,50 @@ import { matchContent, findById, buildPlatformReport } from './notion.js';
 // (not the legacy /videos edge) and use the "blue_reels_play_count" metric
 // instead of "total_video_views". Also requires a Page-scoped access token,
 // not a User token, per Meta's "new Pages experience".
+//
+// Engagement/watch-time fields are all pulled via the same field-expansion
+// this call already makes - no extra API calls. "comments" and "shares"
+// were tried too and don't exist on the Reels object at all (confirmed live
+// - "Tried accessing nonexisting field" even permission aside), unlike
+// "likes" which does. "length" (duration, seconds) is fetched here for
+// this video's own avg-watch-% calc specifically, distinct from the
+// YouTube-sourced "Duration (s)" Notion column other platforms share.
 export async function fetchAllFacebookVideos(cfg) {
   var videos = [];
   var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + cfg.FB_PAGE_ID + '/video_reels' +
-    '?fields=id,description,created_time,permalink_url,picture,video_insights.metric(blue_reels_play_count)' +
+    '?fields=id,description,created_time,permalink_url,picture,length,likes.summary(true),' +
+    'video_insights.metric(blue_reels_play_count,post_video_avg_time_watched,post_video_retention_graph)' +
     '&limit=100&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
   while (url) {
     var data = await fetchJson(url);
     if (data.error) throw new Error('Facebook videos fetch failed: ' + JSON.stringify(data.error));
     (data.data || []).forEach(function (item) {
-      var views = null;
-      if (item.video_insights && item.video_insights.data && item.video_insights.data.length) {
-        var metric = item.video_insights.data[0];
-        if (metric.values && metric.values.length) views = metric.values[0].value;
+      var insights = {};
+      if (item.video_insights && item.video_insights.data) {
+        item.video_insights.data.forEach(function (m) {
+          insights[m.name] = (m.values && m.values.length) ? m.values[0].value : null;
+        });
       }
+      var views = insights.blue_reels_play_count !== undefined ? insights.blue_reels_play_count : null;
+      var avgWatchMs = typeof insights.post_video_avg_time_watched === 'number' ? insights.post_video_avg_time_watched : null;
+      var retention = insights.post_video_retention_graph || null;
+      var length = typeof item.length === 'number' ? item.length : null;
+      // Hook rate: retention[6] IS already "fraction of the audience still
+      // watching at second 6" - exactly "kept watching past the hook
+      // window" (6s for Facebook, since its retention data plateaus
+      // through ~3s - see the flat-start explanation elsewhere).
+      var hookRate = (retention && retention['6'] !== undefined) ? Math.round(retention['6'] * 1000) / 10 : null;
+      var avgWatchPct = (avgWatchMs !== null && length) ? Math.round((avgWatchMs / 1000 / length) * 1000) / 10 : null;
       var permalink = item.permalink_url
         ? (item.permalink_url.indexOf('http') === 0 ? item.permalink_url : 'https://www.facebook.com' + item.permalink_url)
         : null;
-      videos.push({ id: item.id, text: item.description || '', publishedAt: item.created_time, permalink: permalink, views: views, picture: item.picture || null });
+      videos.push({
+        id: item.id, text: item.description || '', publishedAt: item.created_time, permalink: permalink,
+        views: views, picture: item.picture || null,
+        likes: (item.likes && item.likes.summary) ? item.likes.summary.total_count : null,
+        avgWatchTimeS: avgWatchMs !== null ? Math.round(avgWatchMs) / 1000 : null,
+        avgWatchPct: avgWatchPct, hookRate: hookRate, retention: retention
+      });
     });
     url = (data.paging && data.paging.next) ? data.paging.next : null;
   }
@@ -38,7 +64,11 @@ export async function syncFacebook(cfg, rows) {
     if (!m) return;
     var candidate = findById(videos, m.id);
     if (!candidate || candidate.views === null || candidate.views === undefined) return;
-    results.push({ row: row, views: candidate.views, isNewMatch: true, method: m.method, score: m.score, url: candidate.permalink });
+    results.push({
+      row: row, views: candidate.views, isNewMatch: true, method: m.method, score: m.score, url: candidate.permalink,
+      likes: candidate.likes, hookRate: candidate.hookRate, avgWatchPct: candidate.avgWatchPct,
+      avgWatchTimeS: candidate.avgWatchTimeS, retention: candidate.retention
+    });
   });
   return buildPlatformReport(rows, results);
 }
