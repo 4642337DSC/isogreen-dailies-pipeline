@@ -39,8 +39,9 @@ export function parseNotionRow(page) {
   var dateStart = props['Data Postare'] && props['Data Postare'].date ? props['Data Postare'].date.start : null;
   var youtubeUrl = props['YouTube URL'] ? props['YouTube URL'].url : null;
   var tiktokUrl = props['TikTok URL'] ? props['TikTok URL'].url : null;
+  var instagramUrl = props['Instagram URL'] ? props['Instagram URL'].url : null;
   var thumbnailUrl = extractThumbnailUrl(props['Thumbnail']);
-  return { pageId: page.id, name: name, cod: cod, text: text, postDate: dateStart, youtubeUrl: youtubeUrl, tiktokUrl: tiktokUrl, thumbnailUrl: thumbnailUrl };
+  return { pageId: page.id, name: name, cod: cod, text: text, postDate: dateStart, youtubeUrl: youtubeUrl, tiktokUrl: tiktokUrl, instagramUrl: instagramUrl, thumbnailUrl: thumbnailUrl };
 }
 
 export function extractThumbnailUrl(prop) {

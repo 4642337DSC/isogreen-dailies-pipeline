@@ -86,6 +86,20 @@ export async function syncInstagram(cfg, rows, durationByPageId) {
   var media = await fetchAllInstagramMedia(cfg);
   var matched = [];
   rows.forEach(function (row) {
+    // A manually-pasted Instagram URL is trusted outright, no re-matching -
+    // unlike every other signal here, this is a human override of the
+    // auto-matcher, not something to second-guess. Needed because date+text
+    // matching has no way to pick between two real, distinct posts with
+    // identical captions (a same-day accidental double-post, confirmed
+    // live) - matchContent correctly refuses to guess in that case, so a
+    // human has to break the tie, and that choice needs to stick.
+    if (row.instagramUrl) {
+      var pinned = media.find(function (m) { return m.permalink === row.instagramUrl; });
+      if (pinned) {
+        matched.push({ row: row, id: pinned.id, method: 'manual-url', score: null });
+        return;
+      }
+    }
     var m = matchContent(row.postDate, row.text, media);
     if (m) matched.push({ row: row, id: m.id, method: m.method, score: m.score });
   });
