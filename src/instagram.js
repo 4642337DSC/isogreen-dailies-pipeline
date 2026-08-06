@@ -1,4 +1,4 @@
-import { fetchJson } from './http.js';
+import { fetchGraphJson } from './http.js';
 import { GRAPH_API_VERSION } from './config.js';
 import { matchContent, findById, buildPlatformReport } from './notion.js';
 import { monthRangeSince, isoDate } from './util.js';
@@ -6,7 +6,7 @@ import { monthRangeSince, isoDate } from './util.js';
 export async function resolveInstagramUserId(cfg) {
   var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + cfg.FB_PAGE_ID +
     '?fields=instagram_business_account&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
-  var data = await fetchJson(url);
+  var data = await fetchGraphJson(url);
   if (data.error) throw new Error('Could not resolve Instagram account: ' + JSON.stringify(data.error));
   if (!data.instagram_business_account) throw new Error('No Instagram Business/Creator account linked to this Facebook Page.');
   return data.instagram_business_account.id;
@@ -19,7 +19,7 @@ export async function fetchAllInstagramMedia(cfg) {
     '?fields=id,caption,timestamp,permalink,media_product_type,thumbnail_url,media_url' +
     '&limit=100&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
   while (url) {
-    var data = await fetchJson(url);
+    var data = await fetchGraphJson(url);
     if (data.error) throw new Error('Instagram media fetch failed: ' + JSON.stringify(data.error));
     (data.data || []).forEach(function (item) {
       if (item.media_product_type !== 'REELS' && item.media_product_type !== 'VIDEO') return;
@@ -38,7 +38,7 @@ export async function fetchAllInstagramMedia(cfg) {
 export async function fetchInstagramInsight(cfg, mediaId, metric) {
   var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + mediaId +
     '/insights?metric=' + metric + '&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
-  var data = await fetchJson(url);
+  var data = await fetchGraphJson(url);
   return data.error ? null : data;
 }
 
@@ -67,7 +67,7 @@ export async function fetchInstagramMediaMetrics(cfg, mediaIds) {
   for (var id of unique) {
     var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + id +
       '/insights?metric=likes,comments,saved,shares,reels_skip_rate,ig_reels_avg_watch_time&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
-    var data = await fetchJson(url);
+    var data = await fetchGraphJson(url);
     if (data.error) { console.log('Instagram media metrics fetch failed for ' + id + ': ' + JSON.stringify(data.error)); continue; }
     var m = {};
     (data.data || []).forEach(function (row) {
@@ -200,7 +200,7 @@ export async function fetchInstagramCurrentFollowers(cfg) {
   var igUserId = await resolveInstagramUserId(cfg);
   var url = 'https://graph.facebook.com/' + GRAPH_API_VERSION + '/' + igUserId +
     '?fields=followers_count&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
-  var data = await fetchJson(url);
+  var data = await fetchGraphJson(url);
   if (data.error) throw new Error('Could not fetch current Instagram followers: ' + JSON.stringify(data.error));
   return data.followers_count;
 }
@@ -236,7 +236,7 @@ export async function fetchInstagramDailyFollowers(cfg, start, end, currentCount
       '&since=' + Math.floor(chunkStart.getTime() / 1000) +
       '&until=' + Math.floor(chunkEnd.getTime() / 1000) +
       '&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
-    var data = await fetchJson(url);
+    var data = await fetchGraphJson(url);
     if (data.error) {
       console.log('Instagram follower_count fetch failed for ' + isoDate(chunkStart) + '..' + isoDate(chunkEnd) + ': ' + JSON.stringify(data.error));
     } else {
@@ -275,7 +275,7 @@ export async function fetchInstagramViewsTotalForRange(cfg, igUserId, start, end
       '&since=' + Math.floor(chunkStart.getTime() / 1000) +
       '&until=' + Math.floor(chunkEnd.getTime() / 1000) +
       '&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
-    var data = await fetchJson(url);
+    var data = await fetchGraphJson(url);
     if (data.error) {
       console.log('Instagram views fetch failed for ' + isoDate(chunkStart) + '..' + isoDate(chunkEnd) + ': ' + JSON.stringify(data.error));
     } else {

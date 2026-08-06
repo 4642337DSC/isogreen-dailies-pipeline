@@ -1,4 +1,4 @@
-import { fetchJson } from './http.js';
+import { fetchGraphJson } from './http.js';
 import { GRAPH_API_VERSION } from './config.js';
 import { matchContent, findById, buildPlatformReport } from './notion.js';
 
@@ -21,7 +21,7 @@ export async function fetchAllFacebookVideos(cfg) {
     'video_insights.metric(blue_reels_play_count,post_video_avg_time_watched,post_video_retention_graph)' +
     '&limit=100&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
   while (url) {
-    var data = await fetchJson(url);
+    var data = await fetchGraphJson(url);
     if (data.error) throw new Error('Facebook videos fetch failed: ' + JSON.stringify(data.error));
     (data.data || []).forEach(function (item) {
       var insights = {};
@@ -104,7 +104,7 @@ async function fetchFacebookDayMetric(cfg, metric, start, end, mode) {
       '&since=' + Math.floor(chunkStart.getTime() / 1000) +
       '&until=' + Math.floor(chunkEnd.getTime() / 1000) +
       '&access_token=' + cfg.FB_PAGE_ACCESS_TOKEN;
-    var data = await fetchJson(url);
+    var data = await fetchGraphJson(url);
     if (data.error) throw new Error('Facebook ' + metric + ' fetch failed: ' + JSON.stringify(data.error));
 
     var series = (data.data && data.data.length) ? (data.data[0].values || []) : [];
