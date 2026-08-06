@@ -1,13 +1,14 @@
 import { getConfig } from '../src/config.js';
 import { queryNotionDatabase, archiveNotionPage } from '../src/notion.js';
 
-// One-time cleanup: Instagram's account-level "views" metric genuinely has
-// no historical data before 2025-08 for this account (confirmed via a raw
-// API dump - Meta returns an explicit, error-free total_value: 0, not a
-// missing/null result). Every Daily/Monthly Views row this pipeline wrote
-// for Instagram before that date is a false zero, not a real measurement -
-// per-video posts from that period have real, non-zero view counts that
-// this account-level aggregate simply never reflects.
+// Instagram's account-level "views" metric genuinely has no historical
+// data before each account's own real-tracking start (confirmed per-client
+// via a raw API dump/the dashboard's Daily Views payload - Meta returns an
+// explicit, error-free 0, not a missing/null result, so it looks like real
+// data unless you check). Every Daily/Monthly Views row this pipeline
+// wrote for Instagram before that date is a false zero - per-video posts
+// from that period have real, non-zero view counts that this account-level
+// aggregate simply never reflects.
 //
 // Archiving (not just leaving them at 0) matters because of what happens
 // downstream: the dashboard's "Daily/Cumulated Views" chart treats a
@@ -15,16 +16,21 @@ import { queryNotionDatabase, archiveNotionPage } from '../src/notion.js';
 // measurement to plot - so these rows need to disappear entirely, not just
 // change value, for the chart to stop showing Instagram flatlined at zero
 // through this whole stretch.
-// Daily-level check (via a raw API dump per date) found the metric actually
-// stays at a real, explicit 0 through 2025-08-23 and only starts producing
-// genuine non-zero values on 2025-08-24 - refined from the original
-// month-level guess of "2025-08-01" once the flat stretch was spotted on
-// the dashboard's Daily Views chart running a few days into what looked
-// like real data. Monthly Views keeps the coarser 2025-08-01 cutoff since
-// August's monthly aggregate (all from real days 24-31) isn't misleading
-// the way a flatlined daily chart is.
+//
+// Cutoffs are per-client (confirmed empirically, not guessed) since each
+// account's real-tracking start date differs. Monthly keeps the coarser
+// first-fully-real-month cutoff since a partial month's aggregate (mostly
+// real days) isn't misleading in aggregate form the way a flatlined daily
+// chart is.
+var CUTOFFS = {
+  isogreen: { daily: '2025-08-24', monthly: '2025-08-01' }, // real, explicit 0 through 2025-08-23, genuine data from 2025-08-24
+  miradex: { daily: '2025-08-22', monthly: '2025-08-01' } // 2024-08-06 through 2025-08-21 was a false-zero wall
+};
+
 var cfg = getConfig();
 if (!cfg.NOTION_TOKEN) throw new Error('Set NOTION_TOKEN first.');
+var cutoff = CUTOFFS[cfg.CLIENT_SLUG];
+if (!cutoff) throw new Error('No confirmed false-zero cutoff for client "' + cfg.CLIENT_SLUG + '" - check its Daily Views history for a false-zero wall before adding one to CUTOFFS above.');
 
 async function archiveMatching(databaseId, dateProperty, label, cutoff) {
   if (!databaseId) { console.log(label + ' database not configured - skipping.'); return; }
@@ -52,7 +58,7 @@ async function archiveMatching(databaseId, dateProperty, label, cutoff) {
   console.log('Archived ' + archived + ' Instagram row(s) from ' + label + ' (before ' + cutoff + ').');
 }
 
-await archiveMatching(cfg.DAILY_VIEWS_DATABASE_ID, 'Date', 'Daily Views', '2025-08-24');
-await archiveMatching(cfg.MONTHLY_VIEWS_DATABASE_ID, 'Month', 'Monthly Views', '2025-08-01');
+await archiveMatching(cfg.DAILY_VIEWS_DATABASE_ID, 'Date', 'Daily Views', cutoff.daily);
+await archiveMatching(cfg.MONTHLY_VIEWS_DATABASE_ID, 'Month', 'Monthly Views', cutoff.monthly);
 
 console.log('Instagram false-zero cleanup complete.');
