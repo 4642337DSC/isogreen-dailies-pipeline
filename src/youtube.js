@@ -162,9 +162,19 @@ export async function syncYouTube(cfg, rows) {
     // this dimension) - same cost pattern already accepted for Instagram's
     // per-media engagement fetch.
     var retentionData = ytAnalyticsEnabled ? await fetchYouTubeVideoRetention(accessToken, p.id) : null;
+    // engagedViews is unreliable for anything posted before 2025-03-31 -
+    // confirmed empirically the same way as Instagram's reels_skip_rate cutoff
+    // (see instagram.js): consistently 75-100% (an implausible near-zero
+    // swipe-away rate) through 2025-03-27, then a clean drop to a realistic
+    // 28-58% range from 2025-03-31 on, no gradual transition. Reads as a
+    // platform-side change in when/how engagedViews started being tracked
+    // for Shorts, not anything wrong with these specific videos.
+    var YT_HOOK_RATE_RELIABLE_FROM = '2025-03-31';
+    var postDateReliable = !p.row.postDate || p.row.postDate >= YT_HOOK_RATE_RELIABLE_FROM;
     results.push({
       row: p.row, views: stat.views, duration: stat.duration, likes: stat.likes, comments: stat.comments,
-      avgWatchTimeS: avgWatch.avgWatchTimeS, avgWatchPct: avgWatch.avgWatchPct, hookRate: avgWatch.hookRate,
+      avgWatchTimeS: avgWatch.avgWatchTimeS, avgWatchPct: avgWatch.avgWatchPct,
+      hookRate: postDateReliable ? avgWatch.hookRate : null,
       retentionAt3s: retentionData ? pickRetentionAt3s(retentionData.retention, stat.duration) : null,
       retention: retentionData ? retentionData.retention : null,
       relativeRetentionPerformance: retentionData ? retentionData.relativeRetentionPerformance : null,
