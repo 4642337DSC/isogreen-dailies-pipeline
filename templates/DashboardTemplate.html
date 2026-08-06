@@ -2185,71 +2185,86 @@
   // same pattern already accepted for Instagram's engagement fetch.
   function fmtPct(n) { return n === null || n === undefined ? "—" : n.toFixed(1) + "%"; }
   function fmtSeconds(n) { return n === null || n === undefined ? "—" : n.toFixed(1) + "s"; }
+  // unit drives how the delta badge is rendered (see buildPlatformPanel):
+  // "count"/"seconds" metrics show an absolute difference ("+12", "+2.3s") -
+  // a percentage difference on a raw count is easy to misread when the
+  // baseline is small (a jump from 2 comments to 6 reads as "+200%", which
+  // overstates it). "percent" metrics are already on a 0-100 scale, so a
+  // relative percentage difference is the natural comparison there.
   var DETAIL_METRICS = {
     yt: [
-      { label: "Likes", value: function (d) { return d.yt.likes; }, fmt: fmtFull, compare: true },
-      { label: "Comments", value: function (d) { return d.yt.comments; }, fmt: fmtFull, compare: true },
-      { label: "Hook rate (past 3s)", value: function (d) { return d.yt.hookRate; }, fmt: fmtPct, compare: true },
-      { label: "Retention @3s", value: function (d) { return d.yt.retentionAt3s; }, fmt: fmtPct, compare: true },
-      { label: "Avg % watched", value: function (d) { return d.yt.avgWatchPct; }, fmt: fmtPct, compare: true },
-      { label: "Avg watch time", value: function (d) { return d.yt.avgWatchTimeS; }, fmt: fmtSeconds, compare: true },
-      { label: "Retention vs similar", value: function (d) { return d.yt.retentionVsSimilar; }, fmt: fmtPct, compare: false }
+      { label: "Likes", value: function (d) { return d.yt.likes; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Comments", value: function (d) { return d.yt.comments; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Hook rate (past 3s)", value: function (d) { return d.yt.hookRate; }, fmt: fmtPct, compare: true, unit: "percent" },
+      { label: "Retention @3s", value: function (d) { return d.yt.retentionAt3s; }, fmt: fmtPct, compare: true, unit: "percent" },
+      { label: "Avg % watched", value: function (d) { return d.yt.avgWatchPct; }, fmt: fmtPct, compare: true, unit: "percent" },
+      { label: "Avg watch time", value: function (d) { return d.yt.avgWatchTimeS; }, fmt: fmtSeconds, compare: true, unit: "seconds" },
+      { label: "Retention vs similar", value: function (d) { return d.yt.retentionVsSimilar; }, fmt: fmtPct, compare: false, unit: "percent" }
     ],
     fb: [
-      { label: "Likes", value: function (d) { return d.fb.likes; }, fmt: fmtFull, compare: true },
-      { label: "Hook rate (past 6s)", value: function (d) { return d.fb.hookRate; }, fmt: fmtPct, compare: true },
-      { label: "Avg % watched", value: function (d) { return d.fb.avgWatchPct; }, fmt: fmtPct, compare: true },
-      { label: "Avg watch time", value: function (d) { return d.fb.avgWatchTimeS; }, fmt: fmtSeconds, compare: true }
+      { label: "Likes", value: function (d) { return d.fb.likes; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Hook rate (past 6s)", value: function (d) { return d.fb.hookRate; }, fmt: fmtPct, compare: true, unit: "percent" },
+      { label: "Avg % watched", value: function (d) { return d.fb.avgWatchPct; }, fmt: fmtPct, compare: true, unit: "percent" },
+      { label: "Avg watch time", value: function (d) { return d.fb.avgWatchTimeS; }, fmt: fmtSeconds, compare: true, unit: "seconds" }
     ],
     ig: [
-      { label: "Likes", value: function (d) { return d.ig.likes; }, fmt: fmtFull, compare: true },
-      { label: "Comments", value: function (d) { return d.ig.comments; }, fmt: fmtFull, compare: true },
-      { label: "Saves", value: function (d) { return d.ig.saves; }, fmt: fmtFull, compare: true },
-      { label: "Shares", value: function (d) { return d.ig.shares; }, fmt: fmtFull, compare: true },
-      { label: "Hook rate (past 3s)", value: function (d) { return d.ig.hookRate; }, fmt: fmtPct, compare: true },
-      { label: "Avg % watched", value: function (d) { return d.ig.avgWatchPct; }, fmt: fmtPct, compare: true },
-      { label: "Avg watch time", value: function (d) { return d.ig.avgWatchTimeS; }, fmt: fmtSeconds, compare: true }
+      { label: "Likes", value: function (d) { return d.ig.likes; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Comments", value: function (d) { return d.ig.comments; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Saves", value: function (d) { return d.ig.saves; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Shares", value: function (d) { return d.ig.shares; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Hook rate (past 3s)", value: function (d) { return d.ig.hookRate; }, fmt: fmtPct, compare: true, unit: "percent" },
+      { label: "Avg % watched", value: function (d) { return d.ig.avgWatchPct; }, fmt: fmtPct, compare: true, unit: "percent" },
+      { label: "Avg watch time", value: function (d) { return d.ig.avgWatchTimeS; }, fmt: fmtSeconds, compare: true, unit: "seconds" }
     ],
     tt: [
-      { label: "Likes", value: function (d) { return d.tt.likes; }, fmt: fmtFull, compare: true },
-      { label: "Comments", value: function (d) { return d.tt.comments; }, fmt: fmtFull, compare: true },
-      { label: "Shares", value: function (d) { return d.tt.shares; }, fmt: fmtFull, compare: true },
-      { label: "Saves", value: function (d) { return d.tt.saves; }, fmt: fmtFull, compare: true }
+      { label: "Likes", value: function (d) { return d.tt.likes; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Comments", value: function (d) { return d.tt.comments; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Shares", value: function (d) { return d.tt.shares; }, fmt: fmtFull, compare: true, unit: "count" },
+      { label: "Saves", value: function (d) { return d.tt.saves; }, fmt: fmtFull, compare: true, unit: "count" }
     ]
   };
 
-  // Channel-wide average per metric, computed once from every video's
-  // VIDEO_DETAILS entry (not just the ones currently filtered/visible in
-  // the table - "channel average" should mean the whole channel). Skips
-  // nulls rather than treating them as 0, so a metric only a handful of
-  // videos have data for isn't dragged toward zero by the rest.
-  function computeChannelAverages() {
-    var sums = {}, counts = {};
+  // Channel-wide MEDIAN per metric (not mean), computed once from every
+  // video's VIDEO_DETAILS entry (not just the ones currently filtered/
+  // visible in the table - "channel typical" should mean the whole
+  // channel). Median rather than mean because these distributions are
+  // routinely skewed - a handful of viral outliers or, as found on
+  // Miradex's own Instagram hook rate, a cluster of platform-side data
+  // artifacts can drag a mean far from what a "typical" video looks like;
+  // the median isn't pulled around by either. Skips nulls rather than
+  // treating them as 0, so a metric only a handful of videos have data for
+  // isn't dragged toward zero by the rest.
+  function median(values) {
+    if (!values.length) return null;
+    var sorted = values.slice().sort(function (a, b) { return a - b; });
+    var mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  function computeChannelMedians() {
+    var valuesByPlatform = {};
     Object.keys(DETAIL_METRICS).forEach(function (platformKey) {
-      sums[platformKey] = {};
-      counts[platformKey] = {};
-      DETAIL_METRICS[platformKey].forEach(function (spec) { sums[platformKey][spec.label] = 0; counts[platformKey][spec.label] = 0; });
+      valuesByPlatform[platformKey] = {};
+      DETAIL_METRICS[platformKey].forEach(function (spec) { valuesByPlatform[platformKey][spec.label] = []; });
     });
     Object.keys(VIDEO_DETAILS).forEach(function (cod) {
       var detail = VIDEO_DETAILS[cod];
       Object.keys(DETAIL_METRICS).forEach(function (platformKey) {
         DETAIL_METRICS[platformKey].forEach(function (spec) {
           var v = spec.value(detail);
-          if (typeof v === "number") { sums[platformKey][spec.label] += v; counts[platformKey][spec.label]++; }
+          if (typeof v === "number") valuesByPlatform[platformKey][spec.label].push(v);
         });
       });
     });
-    var averages = {};
-    Object.keys(sums).forEach(function (platformKey) {
-      averages[platformKey] = {};
-      Object.keys(sums[platformKey]).forEach(function (label) {
-        var n = counts[platformKey][label];
-        averages[platformKey][label] = n ? sums[platformKey][label] / n : null;
+    var medians = {};
+    Object.keys(valuesByPlatform).forEach(function (platformKey) {
+      medians[platformKey] = {};
+      Object.keys(valuesByPlatform[platformKey]).forEach(function (label) {
+        medians[platformKey][label] = median(valuesByPlatform[platformKey][label]);
       });
     });
-    return averages;
+    return medians;
   }
-  var CHANNEL_AVERAGES = computeChannelAverages();
+  var CHANNEL_MEDIANS = computeChannelMedians();
 
   function buildPlatformPanel(p, r, detail) {
     var specs = DETAIL_METRICS[p.key];
@@ -2292,17 +2307,32 @@
       value.textContent = spec.fmt(v);
       valueWrap.appendChild(value);
 
-      // Channel average is a comparison in its own right, and every
+      // Channel median is a comparison in its own right, and every
       // compare:true metric here is "more is better" (likes, watch time,
-      // hook rate, etc.) - no per-metric direction needed.
+      // hook rate, etc.) - no per-metric direction needed. Count/seconds
+      // metrics show an absolute difference (a "%" on a raw count reads
+      // oddly against a small baseline); percent metrics show a relative
+      // percentage, since both sides are already 0-100 numbers.
       if (spec.compare && typeof v === "number") {
-        var avg = CHANNEL_AVERAGES[p.key] ? CHANNEL_AVERAGES[p.key][spec.label] : null;
-        if (typeof avg === "number" && avg !== 0) {
-          var deltaPct = Math.round(((v - avg) / avg) * 1000) / 10;
-          var delta = document.createElement("span");
-          delta.className = "detail-stat-delta " + (Math.abs(deltaPct) < 3 ? "flat" : (deltaPct > 0 ? "good" : "bad"));
-          delta.textContent = (deltaPct > 0 ? "+" : "") + deltaPct.toFixed(1) + "%";
-          valueWrap.appendChild(delta);
+        var med = CHANNEL_MEDIANS[p.key] ? CHANNEL_MEDIANS[p.key][spec.label] : null;
+        if (typeof med === "number") {
+          var diff = v - med;
+          var deltaText = null;
+          if (spec.unit === "count") {
+            deltaText = (diff > 0 ? "+" : "") + Math.round(diff);
+          } else if (spec.unit === "seconds") {
+            deltaText = (diff > 0 ? "+" : "") + diff.toFixed(1) + "s";
+          } else if (med !== 0) {
+            var deltaPct = Math.round((diff / med) * 1000) / 10;
+            deltaText = (deltaPct > 0 ? "+" : "") + deltaPct.toFixed(1) + "%";
+          }
+          if (deltaText !== null) {
+            var delta = document.createElement("span");
+            var flat = spec.unit === "count" ? Math.abs(diff) < 1 : Math.abs(diff) < (spec.unit === "seconds" ? 0.5 : med * 0.03);
+            delta.className = "detail-stat-delta " + (flat ? "flat" : (diff > 0 ? "good" : "bad"));
+            delta.textContent = deltaText;
+            valueWrap.appendChild(delta);
+          }
         }
       }
 
@@ -2339,7 +2369,11 @@
     var valid = series.filter(function (s) { return s.points && Object.keys(s.points).length; });
     if (!valid.length) return null;
 
-    var W = 600, H = 170, padL = 34, padB = 18, padT = 10, padR = 8;
+    // padR is widened to reserve a column for end-of-line labels - with two
+    // series ending at close values, labels drawn right at the endpoint
+    // used to sit on top of each other (illegible). Labels now live in
+    // that fixed side column, stacked with a minimum gap instead.
+    var W = 620, H = 170, padL = 34, padB = 18, padT = 10, padR = 42;
     var plotW = W - padL - padR, plotH = H - padT - padB;
 
     var maxY = 1;
@@ -2356,7 +2390,7 @@
         '<text class="detail-retention-axis" x="2" y="' + (y + 3) + '">' + Math.round(frac * maxY * 100) + '%</text>';
     }).join("");
 
-    var seriesMarkup = valid.map(function (s) {
+    var seriesData = valid.map(function (s) {
       // Sort the ORIGINAL string keys numerically and index with them
       // directly - going through Number(key) then String(number) to look
       // the value back up (as this used to) silently drops any trailing
@@ -2367,11 +2401,30 @@
       // that round-trip, which is why only YouTube ever rendered.
       var keys = Object.keys(s.points).sort(function (a, b) { return parseFloat(a) - parseFloat(b); });
       var pts = keys.map(function (k) { return [xFor(parseFloat(k)), yFor(s.points[k])]; });
+      return { s: s, pts: pts, endValue: keys.length ? s.points[keys[keys.length - 1]] : 0 };
+    });
+
+    // Label Y positions start at each series' real endpoint height, then
+    // get pushed apart (sorted low-to-high) so two close-together lines
+    // never render overlapping text - see W/padR comment above for why
+    // there's now a dedicated column for these instead of drawing them at
+    // the endpoint itself.
+    var minGap = 14;
+    var labelOrder = seriesData.map(function (d, i) { return { i: i, y: d.pts[d.pts.length - 1][1] }; })
+      .sort(function (a, b) { return a.y - b.y; });
+    for (var li = 1; li < labelOrder.length; li++) {
+      if (labelOrder[li].y - labelOrder[li - 1].y < minGap) labelOrder[li].y = labelOrder[li - 1].y + minGap;
+    }
+    var labelY = {};
+    labelOrder.forEach(function (entry) { labelY[entry.i] = entry.y; });
+
+    var seriesMarkup = seriesData.map(function (d, i) {
+      var s = d.s, pts = d.pts;
       var line = "M " + pts.map(function (p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" L ");
       var area = line + " L " + pts[pts.length - 1][0].toFixed(1) + " " + (padT + plotH).toFixed(1) +
         " L " + pts[0][0].toFixed(1) + " " + (padT + plotH).toFixed(1) + " Z";
       var end = pts[pts.length - 1];
-      var endLabel = Math.round(keys.length ? s.points[keys[keys.length - 1]] * 100 : 0) + "%";
+      var endLabel = Math.round(d.endValue * 100) + "%";
       var gradId = "retgrad" + Math.random().toString(36).slice(2);
 
       return '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
@@ -2380,7 +2433,7 @@
         '<path d="' + area + '" fill="url(#' + gradId + ')" stroke="none"/>' +
         '<path d="' + line + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
         '<circle cx="' + end[0].toFixed(1) + '" cy="' + end[1].toFixed(1) + '" r="3" fill="' + s.color + '"/>' +
-        '<text class="detail-retention-endlabel" style="fill:' + s.color + '" x="' + Math.max(padL, end[0] - 22) + '" y="' + (end[1] - 8) + '">' + endLabel + '</text>';
+        '<text class="detail-retention-endlabel" style="fill:' + s.color + '" x="' + (padL + plotW + 6) + '" y="' + (labelY[i] + 4) + '">' + endLabel + '</text>';
     }).join("");
 
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="170">' +
