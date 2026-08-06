@@ -103,7 +103,19 @@ export async function syncInstagram(cfg, rows, durationByPageId) {
     var duration = durationByPageId ? durationByPageId[p.row.pageId] : undefined;
     // Hook rate framed as "% who kept watching" (matches Facebook's framing
     // and the user-facing label), so it's the inverse of the raw skip rate.
-    var hookRate = typeof m.reels_skip_rate === 'number' ? Math.round((100 - m.reels_skip_rate) * 10) / 10 : null;
+    //
+    // reels_skip_rate is unreliable for anything posted before 2024-10-15 -
+    // confirmed empirically across every Miradex row with a post date that
+    // early: consistently 84-99.9% (implying a near-impossible 0-16% skip
+    // rate) through 2024-10-11, then a clean drop to a realistic 30-70%
+    // range from 2024-10-15 on, with no gradual transition between the two.
+    // Reads as a platform-side methodology or data-availability change on
+    // Meta's end for that metric specifically, not anything wrong with
+    // these particular videos - blanked instead of stored, same reasoning
+    // as the false-zero daily-views cleanup elsewhere in this pipeline.
+    var IG_HOOK_RATE_RELIABLE_FROM = '2024-10-15';
+    var postDateReliable = !p.row.postDate || p.row.postDate >= IG_HOOK_RATE_RELIABLE_FROM;
+    var hookRate = (postDateReliable && typeof m.reels_skip_rate === 'number') ? Math.round((100 - m.reels_skip_rate) * 10) / 10 : null;
     var avgWatchTimeS = typeof m.ig_reels_avg_watch_time === 'number' ? Math.round(m.ig_reels_avg_watch_time) / 1000 : null;
     var avgWatchPct = (avgWatchTimeS !== null && duration) ? Math.round((avgWatchTimeS / duration) * 1000) / 10 : null;
     results.push({
