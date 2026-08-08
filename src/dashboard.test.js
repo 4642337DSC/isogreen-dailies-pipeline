@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDashboardRow, renderClientLinks } from './dashboard.js';
+import { buildDashboardRow, renderClientLinks, buildVideoDetail } from './dashboard.js';
 
 function page(props) {
   return { properties: props };
@@ -45,6 +45,27 @@ test('buildDashboardRow returns null when there is no post date', () => {
   });
 
   assert.equal(buildDashboardRow(cfg, p, {}), null);
+});
+
+test('buildVideoDetail reads the written hook from the "Written Hook" property', () => {
+  var p = page({
+    'Duration (s)': { number: 34 },
+    'Written Hook': { rich_text: [{ plain_text: 'If your lawn is turning brown, ' }, { plain_text: "it's not the heat." }] }
+  });
+
+  var detail = buildVideoDetail(p);
+
+  assert.equal(detail.hook, "If your lawn is turning brown, it's not the heat.");
+});
+
+test('buildVideoDetail returns null hook when "Written Hook" is absent', () => {
+  var p = page({
+    'Duration (s)': { number: 34 }
+  });
+
+  var detail = buildVideoDetail(p);
+
+  assert.equal(detail.hook, null);
 });
 
 test('renderClientLinks renders one link per slug, sorted, label uppercased', () => {

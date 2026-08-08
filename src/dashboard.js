@@ -58,6 +58,7 @@ export function buildVideoDetail(page) {
   var props = page.properties;
   return {
     durationS: numOrNull(props['Duration (s)']),
+    hook: richTextToString(props['Written Hook']) || null,
     yt: {
       likes: numOrNull(props['YT Likes']), comments: numOrNull(props['YT Comments']),
       hookRate: numOrNull(props['YT Hook Rate']), retentionAt3s: numOrNull(props['YT Retention @3s']),

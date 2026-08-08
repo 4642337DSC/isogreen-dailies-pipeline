@@ -891,13 +891,41 @@
     white-space: pre-wrap;
   }
 
-  .detail-retention-wrap { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 8px; }
-  .detail-retention-note { font-size: 11.5px; color: var(--muted); margin: -4px 0 10px; line-height: 1.5; }
+  .detail-chart-wrap { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 16px; }
+  .detail-chart-tabs { display: inline-flex; gap: 3px; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; margin-bottom: 12px; }
+  .detail-chart-tab {
+    font-family: var(--font-display); font-size: 11.5px; font-weight: 600;
+    padding: 6px 12px; border-radius: 7px; border: none; background: transparent;
+    color: var(--muted); cursor: pointer;
+  }
+  .detail-chart-tab:hover { color: var(--ink-2); }
+  .detail-chart-tab.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  .detail-chart-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .detail-chart-note { font-size: 11.5px; color: var(--muted); margin: -2px 0 12px; line-height: 1.5; }
+  .chart-panel[hidden] { display: none; }
   .detail-retention-axis { font-family: var(--font-mono); font-size: 9.5px; fill: var(--muted); }
   .detail-retention-endlabel { font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
   .detail-retention-legend { display: flex; gap: 14px; margin-top: 8px; padding-bottom: 4px; }
   .detail-retention-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
   .detail-retention-legend .swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  /* label+value sit above a full-width track rather than sharing a flex row
+     with it, so the bar can't get squeezed to nothing on narrow screens. */
+  .platform-bar-list { display: flex; flex-direction: column; gap: 16px; }
+  .platform-bar-row { display: flex; flex-direction: column; gap: 6px; }
+  .platform-bar-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .platform-bar-label { display: flex; align-items: center; gap: 6px; min-width: 0; font-family: var(--font-display); font-weight: 700; font-size: 12px; }
+  .platform-bar-sublabel { font-weight: 400; color: var(--muted); font-size: 10.5px; margin-left: 2px; }
+  .platform-bar-track { position: relative; width: 100%; height: 8px; background: var(--grid); border-radius: 999px; }
+  .platform-bar-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px; }
+  .platform-bar-dot { position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px var(--surface); }
+  .platform-bar-value { flex: none; display: flex; align-items: baseline; gap: 7px; font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .platform-bar-axis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); margin-top: 2px; }
+  .platform-bar-omitted-note { margin-top: 12px; font-size: 11px; color: var(--muted); font-style: italic; }
+
+  .detail-hook-quote { border-left: 3px solid var(--accent); padding: 1px 0 1px 14px; margin-bottom: 16px; font-size: 13.5px; line-height: 1.55; font-style: italic; color: var(--ink-2); }
+  .detail-hook-quote.empty { border-left-color: var(--border-2); color: var(--muted); }
+  .detail-hook-source { margin-top: 5px; font-family: var(--font-mono); font-size: 10.5px; font-style: normal; color: var(--muted); }
 
   .detail-modal-footer {
     display: flex;
@@ -2266,6 +2294,32 @@
   }
   var CHANNEL_MEDIANS = computeChannelMedians();
 
+  // Shared delta-vs-median formatter, used by the engagement panels below
+  // and by the chart tabs' bar rows. Every compare metric here is "more is
+  // better" - no per-metric direction needed. All three units show an
+  // absolute difference (count, seconds, or percentage points) rather than
+  // a relative-to-median percentage - for a metric already expressed as a
+  // percent (hook rate, avg % watched), a median of 50% and a video at 55%
+  // reads as "+5%", not "+10%" (which is what diff/med would say).
+  function computeDelta(v, med, unit) {
+    if (typeof v !== "number" || typeof med !== "number") return null;
+    var diff = v - med;
+    var text, flat;
+    if (unit === "count") {
+      text = (diff > 0 ? "+" : "") + Math.round(diff);
+      flat = Math.abs(diff) < 1;
+    } else if (unit === "seconds") {
+      text = (diff > 0 ? "+" : "") + diff.toFixed(1) + "s";
+      flat = Math.abs(diff) < 0.5;
+    } else if (unit === "percent") {
+      text = (diff > 0 ? "+" : "") + diff.toFixed(1) + "%";
+      flat = Math.abs(diff) < 0.5;
+    } else {
+      return null;
+    }
+    return { text: text, cls: flat ? "flat" : (diff > 0 ? "good" : "bad") };
+  }
+
   function buildPlatformPanel(p, r, detail) {
     var specs = DETAIL_METRICS[p.key];
     var anyValue = specs.some(function (s) { return s.value(detail) !== null && s.value(detail) !== undefined; });
@@ -2307,32 +2361,14 @@
       value.textContent = spec.fmt(v);
       valueWrap.appendChild(value);
 
-      // Channel median is a comparison in its own right, and every
-      // compare:true metric here is "more is better" (likes, watch time,
-      // hook rate, etc.) - no per-metric direction needed. Count/seconds
-      // metrics show an absolute difference (a "%" on a raw count reads
-      // oddly against a small baseline); percent metrics show a relative
-      // percentage, since both sides are already 0-100 numbers.
       if (spec.compare && typeof v === "number") {
         var med = CHANNEL_MEDIANS[p.key] ? CHANNEL_MEDIANS[p.key][spec.label] : null;
-        if (typeof med === "number") {
-          var diff = v - med;
-          var deltaText = null;
-          if (spec.unit === "count") {
-            deltaText = (diff > 0 ? "+" : "") + Math.round(diff);
-          } else if (spec.unit === "seconds") {
-            deltaText = (diff > 0 ? "+" : "") + diff.toFixed(1) + "s";
-          } else if (med !== 0) {
-            var deltaPct = Math.round((diff / med) * 1000) / 10;
-            deltaText = (deltaPct > 0 ? "+" : "") + deltaPct.toFixed(1) + "%";
-          }
-          if (deltaText !== null) {
-            var delta = document.createElement("span");
-            var flat = spec.unit === "count" ? Math.abs(diff) < 1 : Math.abs(diff) < (spec.unit === "seconds" ? 0.5 : med * 0.03);
-            delta.className = "detail-stat-delta " + (flat ? "flat" : (diff > 0 ? "good" : "bad"));
-            delta.textContent = deltaText;
-            valueWrap.appendChild(delta);
-          }
+        var deltaInfo = computeDelta(v, med, spec.unit);
+        if (deltaInfo) {
+          var delta = document.createElement("span");
+          delta.className = "detail-stat-delta " + deltaInfo.cls;
+          delta.textContent = deltaInfo.text;
+          valueWrap.appendChild(delta);
         }
       }
 
@@ -2443,6 +2479,277 @@
       '</svg>';
   }
 
+  function emptyNote(text) {
+    var el = document.createElement("div");
+    el.className = "detail-empty-note";
+    el.textContent = text;
+    return el;
+  }
+  function omittedNote(platformLabel, dataDesc) {
+    var el = document.createElement("div");
+    el.className = "platform-bar-omitted-note";
+    el.textContent = platformLabel + " isn't shown — Zernio doesn't provide " + dataDesc + " data.";
+    return el;
+  }
+  function buildBarRow(p, valueText, pct, deltaInfo, subLabel) {
+    var row = document.createElement("div");
+    row.className = "platform-bar-row";
+
+    var top = document.createElement("div");
+    top.className = "platform-bar-row-top";
+
+    var label = document.createElement("span");
+    label.className = "platform-bar-label";
+    label.appendChild(platformIcon(p.key, "sm"));
+    label.appendChild(document.createTextNode(p.label));
+    if (subLabel) {
+      var sub = document.createElement("span");
+      sub.className = "platform-bar-sublabel";
+      sub.textContent = subLabel;
+      label.appendChild(sub);
+    }
+    top.appendChild(label);
+
+    var value = document.createElement("span");
+    value.className = "platform-bar-value";
+    value.appendChild(document.createTextNode(valueText));
+    if (deltaInfo) {
+      var delta = document.createElement("span");
+      delta.className = "detail-stat-delta " + deltaInfo.cls;
+      delta.textContent = deltaInfo.text;
+      value.appendChild(delta);
+    }
+    top.appendChild(value);
+    row.appendChild(top);
+
+    var track = document.createElement("div");
+    track.className = "platform-bar-track";
+    var fill = document.createElement("div");
+    fill.className = "platform-bar-fill";
+    fill.style.width = pct.toFixed(1) + "%";
+    fill.style.background = p.color;
+    track.appendChild(fill);
+    var dot = document.createElement("div");
+    dot.className = "platform-bar-dot";
+    dot.style.left = pct.toFixed(1) + "%";
+    dot.style.background = p.color;
+    track.appendChild(dot);
+    row.appendChild(track);
+
+    return row;
+  }
+
+  // Only ever push a series once its points are confirmed non-empty -
+  // toRatioSeries can come back null (e.g. Facebook retention exists but
+  // this row's YouTube-sourced duration doesn't, a rare real gap), and a
+  // null-points entry here would previously still count toward the
+  // legend/"which platforms are shown" logic below while never actually
+  // being drawn - legend claiming a platform that isn't on the chart.
+  function buildRetentionPanel(detail) {
+    var panel = document.createElement("div");
+    var retentionSeries = [];
+    if (detail.fb && detail.fb.retention) {
+      var fbPoints = toRatioSeries(detail.fb.retention, detail.durationS);
+      if (fbPoints) retentionSeries.push({ platform: "Facebook", color: "var(--p-fb)", points: fbPoints });
+    }
+    if (detail.yt && detail.yt.retention) {
+      retentionSeries.push({ platform: "YouTube", color: "var(--p-yt)", points: detail.yt.retention });
+    }
+    var chartMarkup = buildRetentionChart(retentionSeries);
+    if (!chartMarkup) {
+      panel.appendChild(emptyNote("No retention curve captured for this video."));
+      return panel;
+    }
+
+    var note = document.createElement("div");
+    note.className = "detail-chart-note";
+    note.textContent = "Audience still watching, by % of video elapsed. YouTube can exceed 100% from rewatches.";
+    panel.appendChild(note);
+
+    var chartHost = document.createElement("div");
+    chartHost.innerHTML = chartMarkup;
+    panel.appendChild(chartHost);
+
+    if (retentionSeries.length > 1) {
+      var legend = document.createElement("div");
+      legend.className = "detail-retention-legend";
+      retentionSeries.forEach(function (s) {
+        var item = document.createElement("span");
+        var sw = document.createElement("span");
+        sw.className = "swatch";
+        sw.style.background = s.color;
+        item.appendChild(sw);
+        item.appendChild(document.createTextNode(s.platform));
+        legend.appendChild(item);
+      });
+      panel.appendChild(legend);
+    }
+    return panel;
+  }
+
+  // Where each platform's average viewer stopped, relative to the video's
+  // own runtime - unlike the retention curve (YT/FB only), avgWatchTimeS is
+  // available for Instagram too, and lets every platform with any
+  // watch-time signal sit on one comparable, duration-scaled chart. No "tt"
+  // entry ever exists in DETAIL_METRICS (see comment above it) - Zernio has
+  // no watch-time data at all, so TikTok is filtered out by the same
+  // "does this platform have the field" check that handles any other
+  // platform missing data on a given video, not a hardcoded exclusion.
+  // Delta compares avgWatchPct (% of this video's own runtime), not the raw
+  // avgWatchTimeS seconds - seconds aren't comparable across videos of
+  // different lengths, so a channel-wide median in seconds mixes 20s and
+  // 90s videos together. The displayed value stays in seconds (it's what
+  // the viewer filmed), only the delta is percentage-based.
+  function buildAvgWatchPanel(detail) {
+    var panel = document.createElement("div");
+    var rows = PLATFORMS.filter(function (p) { return p.key !== "tt"; })
+      .map(function (p) { return { p: p, v: detail[p.key] && detail[p.key].avgWatchTimeS }; })
+      .filter(function (row) { return typeof row.v === "number"; });
+
+    if (!rows.length || !detail.durationS) {
+      panel.appendChild(emptyNote("No watch-time data captured for this video."));
+      return panel;
+    }
+
+    var note = document.createElement("div");
+    note.className = "detail-chart-note";
+    note.textContent = "Where the average viewer stopped, plotted against this video's " + fmtSeconds(detail.durationS) + " runtime. Delta is vs. channel median.";
+    panel.appendChild(note);
+
+    var list = document.createElement("div");
+    list.className = "platform-bar-list";
+    rows.forEach(function (row) {
+      var watchPct = detail[row.p.key].avgWatchPct;
+      var pct = typeof watchPct === "number" ? Math.min(watchPct, 100) : Math.min(row.v / detail.durationS, 1) * 100;
+      var med = CHANNEL_MEDIANS[row.p.key] ? CHANNEL_MEDIANS[row.p.key]["Avg % watched"] : null;
+      var deltaInfo = computeDelta(watchPct, med, "percent");
+      list.appendChild(buildBarRow(row.p, fmtSeconds(row.v) + " · " + Math.round(pct) + "%", pct, deltaInfo));
+    });
+    panel.appendChild(list);
+
+    var axis = document.createElement("div");
+    axis.className = "platform-bar-axis";
+    var startLbl = document.createElement("span");
+    startLbl.textContent = "0.0s";
+    var endLbl = document.createElement("span");
+    endLbl.textContent = fmtSeconds(detail.durationS) + " (full length)";
+    axis.appendChild(startLbl);
+    axis.appendChild(endLbl);
+    panel.appendChild(axis);
+
+    panel.appendChild(omittedNote("TikTok", "watch-time"));
+    return panel;
+  }
+
+  // YouTube and Instagram measure hook rate over the first 3s, Facebook
+  // over the first 6s (see DETAIL_METRICS comment) - the two windows aren't
+  // directly comparable, so each row is labeled with its own window rather
+  // than implying a single shared scale. "Written Hook" is a Notion
+  // property on the Video database holding the video's actual
+  // scripted/spoken hook line; VIDEO_DETAILS[cod].hook carries it through
+  // once buildVideoDetail() in dashboard.js reads it, and shows an empty
+  // state when the video (or client) has none.
+  function buildHookPanel(r, detail) {
+    var panel = document.createElement("div");
+
+    var quote = document.createElement("div");
+    if (detail.hook) {
+      quote.className = "detail-hook-quote";
+      quote.appendChild(document.createTextNode("“" + detail.hook + "”"));
+      var source = document.createElement("div");
+      source.className = "detail-hook-source";
+      source.textContent = "From Written Hook · " + r.cod;
+      quote.appendChild(source);
+    } else {
+      quote.className = "detail-hook-quote empty";
+      quote.textContent = "No written hook recorded for this video yet.";
+    }
+    panel.appendChild(quote);
+
+    var HOOK_WINDOWS = { yt: "past 3s", ig: "past 3s", fb: "past 6s" };
+    var rows = PLATFORMS.filter(function (p) { return p.key !== "tt"; })
+      .map(function (p) { return { p: p, v: detail[p.key] && detail[p.key].hookRate }; })
+      .filter(function (row) { return typeof row.v === "number"; });
+
+    if (!rows.length) {
+      panel.appendChild(emptyNote("No hook-rate data captured for this video."));
+      return panel;
+    }
+
+    var note = document.createElement("div");
+    note.className = "detail-chart-note";
+    note.textContent = "Viewers retained past the hook window. FB's 6s window isn't directly comparable to YT/IG's 3s. Delta is vs. channel median.";
+    panel.appendChild(note);
+
+    var list = document.createElement("div");
+    list.className = "platform-bar-list";
+    rows.forEach(function (row) {
+      var medLabel = row.p.key === "fb" ? "Hook rate (past 6s)" : "Hook rate (past 3s)";
+      var med = CHANNEL_MEDIANS[row.p.key] ? CHANNEL_MEDIANS[row.p.key][medLabel] : null;
+      var deltaInfo = computeDelta(row.v, med, "percent");
+      list.appendChild(buildBarRow(row.p, fmtPct(row.v), row.v, deltaInfo, HOOK_WINDOWS[row.p.key]));
+    });
+    panel.appendChild(list);
+
+    var axis = document.createElement("div");
+    axis.className = "platform-bar-axis";
+    var startLbl = document.createElement("span");
+    startLbl.textContent = "0%";
+    var endLbl = document.createElement("span");
+    endLbl.textContent = "100%";
+    axis.appendChild(startLbl);
+    axis.appendChild(endLbl);
+    panel.appendChild(axis);
+
+    panel.appendChild(omittedNote("TikTok", "hook-rate"));
+    return panel;
+  }
+
+  function buildChartTabs(r, detail) {
+    var tabDefs = [
+      { key: "retention", label: "Retention curve", panel: buildRetentionPanel(detail) },
+      { key: "avgwatch", label: "Avg. view duration", panel: buildAvgWatchPanel(detail) },
+      { key: "hook", label: "Hook analysis", panel: buildHookPanel(r, detail) }
+    ];
+
+    var wrap = document.createElement("div");
+    wrap.className = "detail-chart-wrap";
+
+    var tabs = document.createElement("div");
+    tabs.className = "detail-chart-tabs";
+    tabs.setAttribute("role", "tablist");
+    tabs.setAttribute("aria-label", "Video charts");
+    wrap.appendChild(tabs);
+
+    var buttons = [];
+    tabDefs.forEach(function (def, i) {
+      def.panel.classList.add("chart-panel");
+      def.panel.id = "chartPanel_" + def.key + "_" + r.cod;
+      def.panel.hidden = i !== 0;
+      wrap.appendChild(def.panel);
+
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "detail-chart-tab" + (i === 0 ? " active" : "");
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", i === 0 ? "true" : "false");
+      btn.setAttribute("aria-controls", def.panel.id);
+      btn.textContent = def.label;
+      btn.addEventListener("click", function () {
+        tabDefs.forEach(function (other, j) {
+          var isActive = j === i;
+          other.panel.hidden = !isActive;
+          buttons[j].classList.toggle("active", isActive);
+          buttons[j].setAttribute("aria-selected", isActive ? "true" : "false");
+        });
+      });
+      buttons.push(btn);
+      tabs.appendChild(btn);
+    });
+
+    return wrap;
+  }
+
   var detailModal = document.getElementById("detailModal");
   var detailModalLastFocus = null;
 
@@ -2517,52 +2824,7 @@
     engagementWrap.appendChild(grid);
     body.appendChild(engagementWrap);
 
-    // Only ever push a series once its points are confirmed non-empty -
-    // toRatioSeries can come back null (e.g. Facebook retention exists but
-    // this row's YouTube-sourced duration doesn't, a rare real gap), and a
-    // null-points entry here would previously still count toward the
-    // legend/"which platforms are shown" logic below while never actually
-    // being drawn - legend claiming a platform that isn't on the chart.
-    var retentionSeries = [];
-    if (detail.fb && detail.fb.retention) {
-      var fbPoints = toRatioSeries(detail.fb.retention, detail.durationS);
-      if (fbPoints) retentionSeries.push({ platform: "Facebook", color: "var(--p-fb)", points: fbPoints });
-    }
-    if (detail.yt && detail.yt.retention) {
-      retentionSeries.push({ platform: "YouTube", color: "var(--p-yt)", points: detail.yt.retention });
-    }
-    var chartMarkup = buildRetentionChart(retentionSeries);
-    if (chartMarkup) {
-      var retWrap = document.createElement("div");
-      retWrap.className = "detail-retention-wrap";
-      var retLabel = document.createElement("div");
-      retLabel.className = "detail-section-label";
-      retLabel.textContent = "Retention curve";
-      retWrap.appendChild(retLabel);
-      var retNote = document.createElement("div");
-      retNote.className = "detail-retention-note";
-      retNote.textContent = "Share of the audience still watching, by % of the video elapsed. YouTube's line can exceed 100% at points viewers rewind to replay.";
-      retWrap.appendChild(retNote);
-      var chartHost = document.createElement("div");
-      chartHost.innerHTML = chartMarkup;
-      retWrap.appendChild(chartHost);
-
-      if (retentionSeries.length > 1) {
-        var legend = document.createElement("div");
-        legend.className = "detail-retention-legend";
-        retentionSeries.forEach(function (s) {
-          var item = document.createElement("span");
-          var sw = document.createElement("span");
-          sw.className = "swatch";
-          sw.style.background = s.color;
-          item.appendChild(sw);
-          item.appendChild(document.createTextNode(s.platform));
-          legend.appendChild(item);
-        });
-        retWrap.appendChild(legend);
-      }
-      body.appendChild(retWrap);
-    }
+    body.appendChild(buildChartTabs(r, detail));
 
     if (r.link) {
       var footer = document.createElement("div");
