@@ -103,7 +103,7 @@ jobs:
       # fresh tree each time would delete it from the public repo.
       - name: Publish built dashboard to public output repo
         run: |
-          git clone -q "https://x-access-token:${DASHBOARD_REPO_PAT}@github.com/4642337DSC/isogreen-dailies-dashboard.git" /tmp/dashboard-repo
+          git clone -q "https://x-access-token:${DASHBOARD_REPO_PAT}@github.com/4642337DSC/upfilm-content-analytics-dashboard.git" /tmp/dashboard-repo
           cp -r dist/clients/. /tmp/dashboard-repo/
           cd /tmp/dashboard-repo
           git config user.email "actions@github.com"
