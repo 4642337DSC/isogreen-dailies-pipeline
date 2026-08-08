@@ -27,12 +27,12 @@ export function getConfig() {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY || null,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || null,
     VIDEO_ANALYSIS_DATABASE_ID: process.env.VIDEO_ANALYSIS_DATABASE_ID || null,
-    // Which Video DB property holds the actual video file (Files & media,
-    // or a URL property if hosted elsewhere) - Gemini needs the raw file.
-    VIDEO_FILE_FIELD_NAME: process.env.VIDEO_FILE_FIELD_NAME || 'Video File',
-    VIEWS_FIELD_NAME: process.env.VIEWS_FIELD_NAME || 'Views',
-    RETENTION_FIELD_NAME: process.env.RETENTION_FIELD_NAME || 'Retention',
-    COMMENTS_FIELD_NAME: process.env.COMMENTS_FIELD_NAME || 'Comments',
+    // Matches the real ISOGREEN "Video" database's actual property names -
+    // "Total Views" is a formula (sums all 4 platforms), "YT Hook Rate" is
+    // what the original ρ=0.55 baseline was validated against.
+    VIEWS_FIELD_NAME: process.env.VIEWS_FIELD_NAME || 'Total Views',
+    HOOK_RATE_FIELD_NAME: process.env.HOOK_RATE_FIELD_NAME || 'YT Hook Rate',
+    COMMENTS_FIELD_NAME: process.env.COMMENTS_FIELD_NAME || 'YT Comments',
     BRAND_CONTEXT: process.env.BRAND_CONTEXT || '',
     // Written to every Video Analysis row's "Pipeline Version" select, so
     // the v1-gemini-only baseline and this v2 pipeline can run side by side

@@ -29,17 +29,22 @@ async function queryAll(cfg, databaseId, filter) {
   return results;
 }
 
+// Handles both plain number properties and formula properties that resolve
+// to a number (e.g. the Video DB's "Total Views", which sums the 4 platform
+// view counts via a Notion formula rather than storing a number directly).
 function numberProp(props, name) {
   var prop = props[name];
-  return prop && typeof prop.number === 'number' ? prop.number : null;
+  if (!prop) return null;
+  if (typeof prop.number === 'number') return prop.number;
+  if (prop.formula && typeof prop.formula.number === 'number') return prop.formula.number;
+  return null;
 }
 
 // Video DB rows that don't yet have a page in the Video Analysis DB for the
 // given pipeline version - source list for the pipeline orchestrator.
-// VIDEO_FILE_FIELD_NAME points at whatever property on the Video DB holds a
-// downloadable link to the actual video file (a Notion "Files & media"
-// property, or a URL property if videos are hosted elsewhere) - required
-// since Gemini needs the raw file, not just metadata.
+// Gemini is pointed at the "YouTube URL" property directly (no download/
+// upload step - see src/geminiExtract.js), so only videos actually posted
+// to YouTube are eligible; TikTok/IG/FB-only videos are skipped for now.
 export async function fetchAllVideoRows(cfg) {
   var videoRows = await queryAll(cfg, cfg.NOTION_DATABASE_ID);
   return videoRows.map(function (page) { return parseVideoRow(cfg, page); });
@@ -59,29 +64,20 @@ export async function fetchVideosNeedingAnalysis(cfg, pipelineVersion, allRows) 
 
   return rows
     .filter(function (row) { return !alreadyAnalyzed.has(row.pageId); })
-    .filter(function (row) { return !!row.videoFileUrl; });
+    .filter(function (row) { return !!row.youtubeUrl; });
 }
 
 function parseVideoRow(cfg, page) {
   var props = page.properties;
   var name = (props['Name'] && props['Name'].title || []).map(function (t) { return t.plain_text; }).join('');
-  var fileProp = props[cfg.VIDEO_FILE_FIELD_NAME];
-  var videoFileUrl = null;
-  if (fileProp) {
-    if (fileProp.files && fileProp.files.length) {
-      var f = fileProp.files[0];
-      videoFileUrl = f.type === 'external' ? f.external.url : (f.file ? f.file.url : null);
-    } else if (fileProp.url) {
-      videoFileUrl = fileProp.url;
-    }
-  }
   return {
     pageId: page.id,
     name: name,
-    videoFileUrl: videoFileUrl,
+    cod: richTextToString(props['Cod']),
+    youtubeUrl: props['YouTube URL'] ? props['YouTube URL'].url : null,
     postDate: props['Data Postare'] && props['Data Postare'].date ? props['Data Postare'].date.start : null,
     views: numberProp(props, cfg.VIEWS_FIELD_NAME),
-    retention: numberProp(props, cfg.RETENTION_FIELD_NAME),
+    hookRate: numberProp(props, cfg.HOOK_RATE_FIELD_NAME),
     comments: numberProp(props, cfg.COMMENTS_FIELD_NAME)
   };
 }
@@ -99,7 +95,7 @@ export function computeChannelBaseline(rows) {
 export function buildPerformanceContext(row, channelBaseline) {
   return {
     views: row.views,
-    retention: row.retention,
+    yt_hook_rate: row.hookRate,
     comments: row.comments,
     channel_baseline: channelBaseline
   };

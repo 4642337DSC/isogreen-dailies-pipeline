@@ -71,9 +71,9 @@ async function fetchScoresForVersion(cfg, pipelineVersion) {
 }
 
 // Section 6 of the build plan: run both pipeline versions on the same set
-// of videos, then compare Spearman ρ against views and retention (proxy for
-// YT Hook Rate) for each. ρ(v2) >= ρ(v1) => ship v2; otherwise iterate on
-// the extraction schema before abandoning the architecture.
+// of videos, then compare Spearman ρ against views and YT Hook Rate for
+// each. ρ(v2) >= ρ(v1) => ship v2; otherwise iterate on the extraction
+// schema before abandoning the architecture.
 export async function runValidation(options) {
   var cfg = getConfig();
   if (!cfg.NOTION_TOKEN || !cfg.NOTION_DATABASE_ID || !cfg.VIDEO_ANALYSIS_DATABASE_ID) {
@@ -101,18 +101,18 @@ export async function runValidation(options) {
       joined.filter(function (j) { return typeof j.score.overall === 'number' && typeof j.perf.views === 'number'; }).map(function (j) { return j.score.overall; }),
       joined.filter(function (j) { return typeof j.score.overall === 'number' && typeof j.perf.views === 'number'; }).map(function (j) { return j.perf.views; })
     );
-    var hookVsRetention = spearman(
-      joined.filter(function (j) { return typeof j.score.hook === 'number' && typeof j.perf.retention === 'number'; }).map(function (j) { return j.score.hook; }),
-      joined.filter(function (j) { return typeof j.score.hook === 'number' && typeof j.perf.retention === 'number'; }).map(function (j) { return j.perf.retention; })
+    var hookVsHookRate = spearman(
+      joined.filter(function (j) { return typeof j.score.hook === 'number' && typeof j.perf.hookRate === 'number'; }).map(function (j) { return j.score.hook; }),
+      joined.filter(function (j) { return typeof j.score.hook === 'number' && typeof j.perf.hookRate === 'number'; }).map(function (j) { return j.perf.hookRate; })
     );
 
-    results[version] = { sampleSize: joined.length, overallVsViews: overallVsViews, hookVsRetention: hookVsRetention };
+    results[version] = { sampleSize: joined.length, overallVsViews: overallVsViews, hookVsHookRate: hookVsHookRate };
   });
 
   console.log('Video analysis A/B validation (' + versionA + ' vs ' + versionB + '):');
   Object.keys(results).forEach(function (version) {
     var r = results[version];
-    console.log('  ' + version + ' (n=' + r.sampleSize + '): overall-vs-views ρ=' + fmt(r.overallVsViews) + ', hook-vs-retention ρ=' + fmt(r.hookVsRetention));
+    console.log('  ' + version + ' (n=' + r.sampleSize + '): overall-vs-views ρ=' + fmt(r.overallVsViews) + ', hook-vs-YTHookRate ρ=' + fmt(r.hookVsHookRate));
   });
 
   return results;

@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { getConfig, requireVideoAnalysisConfig } from './config.js';
 import { extractVideo } from './geminiExtract.js';
 import { scoreVideo } from './claudeScore.js';
@@ -11,20 +8,6 @@ import {
   fetchVideosNeedingAnalysis,
   writeAnalysisResult
 } from './videoAnalysisNotion.js';
-
-function extFromUrl(url) {
-  var ext = path.extname(new URL(url).pathname).toLowerCase();
-  return ext || '.mp4';
-}
-
-async function downloadToTemp(url, videoId) {
-  var res = await fetch(url);
-  if (!res.ok) throw new Error('Failed to download video file (' + res.status + '): ' + url);
-  var buffer = Buffer.from(await res.arrayBuffer());
-  var tmpPath = path.join(os.tmpdir(), 'video-analysis-' + videoId + extFromUrl(url));
-  fs.writeFileSync(tmpPath, buffer);
-  return tmpPath;
-}
 
 // Thin orchestrator: for each video needing analysis, extract (Stage 1,
 // cache-aware) -> score (Stage 2) -> write to Notion. Safe to re-run - a
@@ -49,12 +32,8 @@ export async function runPipeline(options) {
   for (var row of pending) {
     var videoId = row.pageId;
     try {
-      console.log('[' + videoId + '] ' + (row.name || '(untitled)') + ': downloading...');
-      var tmpPath = await downloadToTemp(row.videoFileUrl, videoId);
-
-      console.log('[' + videoId + '] extracting (Gemini)...');
-      var extracted = await extractVideo(cfg, { videoId: videoId, filePath: tmpPath });
-      fs.rmSync(tmpPath, { force: true });
+      console.log('[' + videoId + '] ' + (row.name || '(untitled)') + ': extracting (Gemini, from ' + row.youtubeUrl + ')...');
+      var extracted = await extractVideo(cfg, { videoId: videoId, youtubeUrl: row.youtubeUrl });
       if (extracted.fromCache) console.log('[' + videoId + '] using cached extraction.');
 
       console.log('[' + videoId + '] scoring (Claude)...');
