@@ -2,3 +2,8 @@ node_modules/
 dist/
 .env
 .env.*
+# Local speed-up cache for src/geminiExtract.js - the durable copy of each
+# raw extraction lives in Notion's "Raw Extraction" property (see
+# src/videoAnalysisNotion.js), since this repo runs on ephemeral GitHub
+# Actions runners where a local cache/ dir wouldn't survive between runs.
+cache/

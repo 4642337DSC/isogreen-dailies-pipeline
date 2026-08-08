@@ -1,0 +1,72 @@
+{
+  "$id": "videoAnalysisRawExtraction",
+  "title": "Video Analysis - Stage 1 raw extraction (Gemini)",
+  "description": "Pure observation of a video: visuals, on-screen text, spoken words, audio, and cut timing, with zero quality judgment. Every claim is tied to a timestamp; anything Gemini is unsure about goes in confidence_notes instead of being guessed.",
+  "type": "object",
+  "required": ["video_id", "duration_seconds", "hook_window", "segments", "cut_stats", "structural_markers"],
+  "properties": {
+    "video_id": { "type": "string" },
+    "duration_seconds": { "type": "number" },
+    "hook_window": {
+      "type": "object",
+      "description": "The first 0-3 seconds, described with zero interpretation of why it works.",
+      "required": ["visual_description", "spoken_words", "cut_count_in_window"],
+      "properties": {
+        "visual_description": { "type": "string" },
+        "on_screen_text": { "type": "string" },
+        "spoken_words": { "type": "string" },
+        "audio_description": { "type": "string" },
+        "cut_count_in_window": { "type": "integer" }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "description": "One entry per shot/cut, in order.",
+      "items": {
+        "type": "object",
+        "required": ["start_sec", "end_sec", "shot_type", "visual_description", "spoken_words"],
+        "properties": {
+          "start_sec": { "type": "number" },
+          "end_sec": { "type": "number" },
+          "shot_type": { "type": "string", "enum": ["talking_head", "b_roll", "text_overlay_full_screen", "screen_recording", "other"] },
+          "visual_description": { "type": "string" },
+          "on_screen_text": { "type": "string" },
+          "spoken_words": { "type": "string" },
+          "audio_cue": { "type": "string", "description": "e.g. music swell, silence, sound effect - descriptive only" }
+        }
+      }
+    },
+    "cut_stats": {
+      "type": "object",
+      "required": ["total_cuts", "avg_shot_length_sec", "talking_head_ratio"],
+      "properties": {
+        "total_cuts": { "type": "integer" },
+        "cuts_per_10s_first_third": { "type": "number" },
+        "cuts_per_10s_middle_third": { "type": "number" },
+        "cuts_per_10s_last_third": { "type": "number" },
+        "avg_shot_length_sec": { "type": "number" },
+        "talking_head_ratio": { "type": "number", "description": "0-1, fraction of runtime that is talking head vs b-roll/other" }
+      }
+    },
+    "structural_markers": {
+      "type": "object",
+      "properties": {
+        "payoff_timestamp_sec": { "type": ["number", "null"], "description": "When the question/tension raised in the hook is resolved, if identifiable" },
+        "cta_timestamp_sec": { "type": ["number", "null"] },
+        "cta_text": { "type": ["string", "null"] },
+        "topic_changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp_sec": { "type": "number" },
+              "new_topic": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "full_transcript": { "type": "string" },
+    "confidence_notes": { "type": "string", "description": "Anything Gemini was unsure about or couldn't cleanly extract" }
+  }
+}

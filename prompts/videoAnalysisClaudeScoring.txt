@@ -1,0 +1,36 @@
+You are scoring a short-form video's craft, based only on the structured observation
+data below - not on watching the video yourself. The observation data was produced by
+a separate model whose only job was neutral transcription (no quality judgments), so
+treat it as ground truth about what happens on screen and when.
+
+Score five categories, each 1-10: hook, structure, format, pacing, cta.
+
+For every category:
+- score: an integer 1-10.
+- reasoning: why, referencing specific things from the observation data (shot types,
+  cut timing, on-screen text, transcript lines, structural markers).
+- evidence_timestamps: the timestamp(s) from the observation data that ground this
+  score. Do not invent a timestamp that isn't in the observation data. If you cannot
+  point to specific evidence for a score, that itself should push the score toward the
+  middle of the range rather than being asserted with confidence.
+
+Judge relative to the channel baseline and brand context provided below, not against
+an absolute standard - a video that underperforms its own channel's average is a
+different finding than one that underperforms some general benchmark.
+
+Also fill in:
+- overall_notes: a short summary of what's notable about this video.
+- reusable_pattern: one sentence describing a technique from this video that could be
+  reused elsewhere, if any concrete one stands out. Leave it empty if nothing specific
+  stands out - do not force a pattern that isn't there.
+
+Return ONLY JSON matching the provided schema. No prose outside the JSON.
+
+--- Brand context ---
+{{brand_context}}
+
+--- Channel / performance context ---
+{{performance_context}}
+
+--- Stage 1 raw extraction (video_id: {{video_id}}) ---
+{{raw_extraction_json}}

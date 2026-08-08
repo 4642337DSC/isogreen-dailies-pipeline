@@ -21,13 +21,36 @@ export function getConfig() {
     YT_FIELD_NAME: process.env.YT_FIELD_NAME || 'YouTube',
     FB_FIELD_NAME: process.env.FB_FIELD_NAME || 'Facebook',
     IG_FIELD_NAME: process.env.IG_FIELD_NAME || 'Instagram',
-    TT_FIELD_NAME: process.env.TT_FIELD_NAME || 'TikTok'
+    TT_FIELD_NAME: process.env.TT_FIELD_NAME || 'TikTok',
+
+    // --- Video analysis pipeline (Gemini extract -> Claude score -> Notion) ---
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY || null,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || null,
+    VIDEO_ANALYSIS_DATABASE_ID: process.env.VIDEO_ANALYSIS_DATABASE_ID || null,
+    // Which Video DB property holds the actual video file (Files & media,
+    // or a URL property if hosted elsewhere) - Gemini needs the raw file.
+    VIDEO_FILE_FIELD_NAME: process.env.VIDEO_FILE_FIELD_NAME || 'Video File',
+    VIEWS_FIELD_NAME: process.env.VIEWS_FIELD_NAME || 'Views',
+    RETENTION_FIELD_NAME: process.env.RETENTION_FIELD_NAME || 'Retention',
+    COMMENTS_FIELD_NAME: process.env.COMMENTS_FIELD_NAME || 'Comments',
+    BRAND_CONTEXT: process.env.BRAND_CONTEXT || '',
+    // Written to every Video Analysis row's "Pipeline Version" select, so
+    // the v1-gemini-only baseline and this v2 pipeline can run side by side
+    // on the same videos without overwriting each other (see Section 6 of
+    // the build plan - A/B validation before flipping production over).
+    PIPELINE_VERSION: process.env.PIPELINE_VERSION || 'v2-gemini-claude'
   };
 }
 
 export function requireConfig(cfg) {
   if (!cfg.YOUTUBE_API_KEY || !cfg.NOTION_TOKEN || !cfg.NOTION_DATABASE_ID) {
     throw new Error('Missing required env vars. Set YOUTUBE_API_KEY, NOTION_TOKEN, NOTION_DATABASE_ID (see .env.example).');
+  }
+}
+
+export function requireVideoAnalysisConfig(cfg) {
+  if (!cfg.GEMINI_API_KEY || !cfg.ANTHROPIC_API_KEY || !cfg.NOTION_TOKEN || !cfg.NOTION_DATABASE_ID || !cfg.VIDEO_ANALYSIS_DATABASE_ID) {
+    throw new Error('Missing required env vars. Set GEMINI_API_KEY, ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_DATABASE_ID, VIDEO_ANALYSIS_DATABASE_ID (see .env.example).');
   }
 }
 

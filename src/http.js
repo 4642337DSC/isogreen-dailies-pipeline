@@ -7,6 +7,7 @@ export async function fetchText(url, options) {
   return {
     status: res.status,
     text: text,
+    headers: res.headers,
     json: function () { return text ? JSON.parse(text) : null; }
   };
 }
